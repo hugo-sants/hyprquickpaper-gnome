@@ -170,7 +170,7 @@ class WallpaperPicker:
         provider.load_from_data(
             b"""
             window.background {
-                background: none;
+                background: unset;
                 background-color: transparent;
                 background-image: none;
                 box-shadow: none;
@@ -178,25 +178,22 @@ class WallpaperPicker:
             }
 
             window.background > * {
-                background: none;
+                background: unset;
                 background-color: transparent;
                 background-image: none;
                 box-shadow: none;
                 border: none;
             }
 
-            drawingarea {
-                background: none;
+            drawingarea,
+            drawingarea.background {
+                background: unset;
                 background-color: transparent;
                 background-image: none;
+                box-shadow: none;
+                border: none;
             }
             """
-        )
-
-        Gtk.StyleContext.add_provider_for_display(
-            self.window.get_display(),
-            provider,
-            Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION,
         )
 
         Gtk.StyleContext.add_provider_for_display(
