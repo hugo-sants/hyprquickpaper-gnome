@@ -76,45 +76,51 @@ echo "Use GNOME accelerator syntax, for example: <Super>w or <Super><Alt>w"
 read -r -p "Shortcut [$default_shortcut]: " wallpaper_shortcut
 wallpaper_shortcut="${wallpaper_shortcut:-$default_shortcut}"
 
-python3 - "$SCRIPT_DIR" "$wallpaper_shortcut" <<'PY'
-import sys
-from pathlib import Path
+script_path="$SCRIPT_DIR/app.py"
+command="env GDK_BACKEND=wayland python3 $script_path"
 
-script_dir = Path(sys.argv[1]).resolve()
-shortcut = sys.argv[2]
-command = f"env GDK_BACKEND=wayland python3 {script_dir / 'app.py'}"
+base="/org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/"
 
-try:
-    from gi.repository import Gio
-except Exception as exc:
-    print(f"Could not load GSettings bindings: {exc}", file=sys.stderr)
-    raise SystemExit(1)
+existing="$(gsettings get \
+    org.gnome.settings-daemon.plugins.media-keys \
+    custom-keybindings)"
 
-settings = Gio.Settings.new("org.gnome.settings-daemon.plugins.media-keys")
-existing = list(settings.get_strv("custom-keybindings"))
+index=0
 
-base = "/org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/"
-used = set(existing)
+while [[ "$existing" == *"${base}custom${index}/"* ]]; do
+    ((index++))
+done
 
-index = 0
-while f"{base}custom{index}/" in used:
-    index += 1
+shortcut_path="${base}custom${index}/"
 
-path = f"{base}custom{index}/"
+if [[ "$existing" == "@as []" ]]; then
+    new_keybindings="['$shortcut_path']"
+else
+    new_keybindings="${existing%]}"
+    new_keybindings+=", '$shortcut_path']"
+fi
 
-existing.append(path)
-settings.set_strv("custom-keybindings", existing)
+gsettings set \
+    org.gnome.settings-daemon.plugins.media-keys \
+    custom-keybindings \
+    "$new_keybindings"
 
-custom = Gio.Settings.new_with_path(
-    "org.gnome.settings-daemon.plugins.media-keys.custom-keybinding",
-    path,
-)
-custom.set_string("name", "HyprQuickPaper GNOME")
-custom.set_string("command", command)
-custom.set_string("binding", shortcut)
+gsettings set \
+    "org.gnome.settings-daemon.plugins.media-keys.custom-keybinding:${shortcut_path}" \
+    name \
+    "HyprQuickPaper GNOME"
 
-print(f"GNOME shortcut configured: {shortcut}")
-PY
+gsettings set \
+    "org.gnome.settings-daemon.plugins.media-keys.custom-keybinding:${shortcut_path}" \
+    command \
+    "$command"
+
+gsettings set \
+    "org.gnome.settings-daemon.plugins.media-keys.custom-keybinding:${shortcut_path}" \
+    binding \
+    "$wallpaper_shortcut"
+
+echo "GNOME shortcut configured: $wallpaper_shortcut"
 
 echo
 echo "Installation complete."
