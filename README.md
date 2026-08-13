@@ -18,7 +18,7 @@ sudo dnf install gtk4 python3-gobject python3-cairo jq ImageMagick
 
 The runtime also expects GNOME's `gsettings` command and a Wayland session.
 
-The project was inspired by the dotfiles approach in [ilyamiro/ilyamiro](https://github.com/ilyamiro/ilyamiro). It is an independent GNOME/GTK4 implementation rather than a direct dependency or port of that repository.
+The project was inspired by the dotfiles approach in [ilyamiro/ilyamiro](https://github.com/ilyamiro). It is an independent GNOME/GTK4 implementation rather than a direct dependency or port of that repository.
 
 
 ## Project structure
