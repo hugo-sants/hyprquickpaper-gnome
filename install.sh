@@ -88,7 +88,7 @@ existing="$(gsettings get \
 index=0
 
 while [[ "$existing" == *"${base}custom${index}/"* ]]; do
-    ((index++))
+    index=$((index + 1))
 done
 
 shortcut_path="${base}custom${index}/"
