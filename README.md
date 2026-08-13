@@ -37,8 +37,6 @@ hyprquickpaper-gnome/
 └── .gitattributes
 ```
 
-`config.json` is intentionally not versioned. It is generated locally by `install.sh` from `config.example.json`, so personal paths do not end up in Git.
-
 ## Installation
 
 Clone the repository and enter it:
