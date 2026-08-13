@@ -2,8 +2,10 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+INSTALL_DIR="$HOME/.local/share/hyprquickpaper-gnome"
+
 CONFIG_EXAMPLE="$SCRIPT_DIR/config.example.json"
-CONFIG_FILE="$SCRIPT_DIR/config.json"
+CONFIG_FILE="$INSTALL_DIR/config.json"
 CACHE_DIR="$HOME/.cache/hyprquickpaper/thumbs"
 
 if [[ ! -f "$CONFIG_EXAMPLE" ]]; then
@@ -44,7 +46,14 @@ fi
 
 wallpaper_dir="$(realpath -m "$wallpaper_dir")"
 
+mkdir -p "$INSTALL_DIR"
 mkdir -p "$wallpaper_dir" "$CACHE_DIR"
+
+cp "$SCRIPT_DIR/app.py" "$INSTALL_DIR/"
+cp "$SCRIPT_DIR/config.example.json" "$INSTALL_DIR/"
+cp -r "$SCRIPT_DIR/scripts" "$INSTALL_DIR/"
+
+CONFIG_EXAMPLE="$INSTALL_DIR/config.example.json"
 
 python3 - "$CONFIG_EXAMPLE" "$CONFIG_FILE" "$wallpaper_dir" "$CACHE_DIR" <<'PY'
 import json
@@ -53,9 +62,19 @@ from pathlib import Path
 
 example, output, wallpaper_dir, cache_dir = sys.argv[1:]
 
-config = json.loads(Path(example).read_text(encoding="utf-8"))
-config["wallpaper_path"] = str(Path(wallpaper_dir).expanduser().resolve())
-config["cache_path"] = str(Path(cache_dir).expanduser().resolve())
+config = json.loads(
+    Path(example).read_text(
+        encoding="utf-8"
+    )
+)
+
+config["wallpaper_path"] = str(
+    Path(wallpaper_dir).expanduser().resolve()
+)
+
+config["cache_path"] = str(
+    Path(cache_dir).expanduser().resolve()
+)
 
 Path(output).write_text(
     json.dumps(config, indent=4) + "\n",
@@ -63,9 +82,9 @@ Path(output).write_text(
 )
 PY
 
-chmod +x "$SCRIPT_DIR/app.py"
-chmod +x "$SCRIPT_DIR/scripts/cache.sh"
-chmod +x "$SCRIPT_DIR/scripts/commands.sh"
+chmod +x "$INSTALL_DIR/app.py"
+chmod +x "$INSTALL_DIR/scripts/cache.sh"
+chmod +x "$INSTALL_DIR/scripts/commands.sh"
 
 # Configure a GNOME custom shortcut without replacing existing custom shortcuts.
 default_shortcut="<Super>w"
@@ -76,7 +95,7 @@ echo "Use GNOME accelerator syntax, for example: <Super>w or <Super><Alt>w"
 read -r -p "Shortcut [$default_shortcut]: " wallpaper_shortcut
 wallpaper_shortcut="${wallpaper_shortcut:-$default_shortcut}"
 
-script_path="$SCRIPT_DIR/app.py"
+script_path="$INSTALL_DIR/app.py"
 command="$script_path"
 
 base="/org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/"
@@ -124,15 +143,16 @@ echo "GNOME shortcut configured: $wallpaper_shortcut"
 
 echo
 echo "Installation complete."
-echo "Wallpaper directory: $wallpaper_dir"
-echo "Cache directory:     $CACHE_DIR"
-echo "GNOME shortcut:      $wallpaper_shortcut"
+echo "Installation directory: $INSTALL_DIR"
+echo "Wallpaper directory:    $wallpaper_dir"
+echo "Cache directory:        $CACHE_DIR"
+echo "GNOME shortcut:         $wallpaper_shortcut"
 echo
 echo "Test the selector using the configured shortcut:"
 echo "  $wallpaper_shortcut"
 echo
 echo "Or run it directly:"
-echo "  ./app.py"
+echo "  $INSTALL_DIR/app.py"
 echo
 echo "Or, explicitly on Wayland:"
-echo "  GDK_BACKEND=wayland ./app.py"
+echo "  GDK_BACKEND=wayland $INSTALL_DIR/app.py"
