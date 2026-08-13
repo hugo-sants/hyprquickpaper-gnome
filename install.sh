@@ -7,31 +7,83 @@ CONFIG_FILE="$SCRIPT_DIR/config.json"
 CACHE_DIR="$HOME/.cache/hyprquickpaper/thumbs"
 
 check_dependencies() {
-    local missing=()
+    local failed=0
 
-    command -v python3 >/dev/null 2>&1 || missing+=("python3")
-    command -v jq >/dev/null 2>&1 || missing+=("jq")
-    command -v gsettings >/dev/null 2>&1 || missing+=("gsettings")
+    echo "Checking dependencies..."
+    echo
 
-    if ! command -v magick >/dev/null 2>&1 && ! command -v convert >/dev/null 2>&1; then
-        missing+=("ImageMagick")
+    command -v python3 >/dev/null 2>&1 || {
+        echo "  [MISSING] python3"
+        failed=1
+    }
+
+    if command -v python3 >/dev/null 2>&1; then
+        echo "  [OK] python3: $(command -v python3)"
     fi
 
-    if ! python3 -c '
+    if command -v gsettings >/dev/null 2>&1; then
+        echo "  [OK] gsettings: $(command -v gsettings)"
+    else
+        echo "  [MISSING] gsettings"
+        failed=1
+    fi
+
+    if command -v magick >/dev/null 2>&1; then
+        echo "  [OK] ImageMagick: $(command -v magick)"
+    elif command -v convert >/dev/null 2>&1; then
+        echo "  [OK] ImageMagick: $(command -v convert)"
+    else
+        echo "  [MISSING] ImageMagick"
+        failed=1
+    fi
+
+    if python3 -c 'import gi' >/dev/null 2>&1; then
+        echo "  [OK] PyGObject"
+    else
+        echo "  [MISSING] python3-gobject"
+        failed=1
+    fi
+
+    if python3 -c 'import cairo' >/dev/null 2>&1; then
+        echo "  [OK] PyCairo"
+    else
+        echo "  [MISSING] python3-cairo"
+        failed=1
+    fi
+
+    if python3 -c '
 import gi
-import cairo
 gi.require_version("Gtk", "4.0")
 from gi.repository import Gtk
 ' >/dev/null 2>&1; then
-        missing+=("python3-gobject/python3-cairo/gtk4")
+        echo "  [OK] GTK 4"
+    else
+        echo "  [MISSING] GTK 4 / GTK typelib"
+        failed=1
     fi
 
-    if ((${#missing[@]} > 0)); then
-        echo "Missing dependencies: ${missing[*]}" >&2
+    if python3 -c '
+from gi.repository import Gio, GLib
+' >/dev/null 2>&1; then
+        echo "  [OK] Gio / GLib"
+    else
+        echo "  [MISSING] Gio / GLib GObject bindings"
+        failed=1
+    fi
+
+    echo
+
+    if ((failed)); then
+        echo "Some dependencies are missing or could not be loaded." >&2
+        echo
         echo "On Fedora, install them with:" >&2
-        echo "  sudo dnf install gtk4 python3-gobject python3-cairo jq ImageMagick" >&2
+        echo "  sudo dnf install gtk4 python3-gobject python3-cairo ImageMagick glib2" >&2
+        echo
         exit 1
     fi
+
+    echo "All dependencies are available."
+    echo
 }
 
 check_dependencies
@@ -72,6 +124,8 @@ elif [[ "$wallpaper_dir" != /* ]]; then
     wallpaper_dir="$SCRIPT_DIR/$wallpaper_dir"
 fi
 
+wallpaper_dir="$(realpath -m "$wallpaper_dir")"
+
 mkdir -p "$wallpaper_dir" "$CACHE_DIR"
 
 python3 - "$CONFIG_EXAMPLE" "$CONFIG_FILE" "$wallpaper_dir" "$CACHE_DIR" <<'PY'
@@ -105,8 +159,6 @@ read -r -p "Shortcut [$default_shortcut]: " wallpaper_shortcut
 wallpaper_shortcut="${wallpaper_shortcut:-$default_shortcut}"
 
 python3 - "$SCRIPT_DIR" "$wallpaper_shortcut" <<'PY'
-import json
-import subprocess
 import sys
 from pathlib import Path
 
@@ -115,7 +167,7 @@ shortcut = sys.argv[2]
 command = f"env GDK_BACKEND=wayland python3 {script_dir / 'app.py'}"
 
 try:
-    from gi.repository import Gio, GLib
+    from gi.repository import Gio
 except Exception as exc:
     print(f"Could not load GSettings bindings: {exc}", file=sys.stderr)
     raise SystemExit(1)
@@ -134,7 +186,6 @@ path = f"{base}custom{index}/"
 
 existing.append(path)
 settings.set_strv("custom-keybindings", existing)
-settings.apply()
 
 custom = Gio.Settings.new_with_path(
     "org.gnome.settings-daemon.plugins.media-keys.custom-keybinding",
@@ -143,7 +194,6 @@ custom = Gio.Settings.new_with_path(
 custom.set_string("name", "HyprQuickPaper GNOME")
 custom.set_string("command", command)
 custom.set_string("binding", shortcut)
-custom.apply()
 
 print(f"GNOME shortcut configured: {shortcut}")
 PY
