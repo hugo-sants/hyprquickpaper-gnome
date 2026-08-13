@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 
 import json
 import math
@@ -168,17 +169,34 @@ class WallpaperPicker:
 
         provider.load_from_data(
             b"""
-            window,
-            window.background,
-            drawingarea,
-            drawingarea.background {
-                background: transparent;
-                background-color: rgba(0, 0, 0, 0);
+            window.background {
+                background: none;
+                background-color: transparent;
                 background-image: none;
                 box-shadow: none;
                 border: none;
             }
+
+            window.background > * {
+                background: none;
+                background-color: transparent;
+                background-image: none;
+                box-shadow: none;
+                border: none;
+            }
+
+            drawingarea {
+                background: none;
+                background-color: transparent;
+                background-image: none;
+            }
             """
+        )
+
+        Gtk.StyleContext.add_provider_for_display(
+            self.window.get_display(),
+            provider,
+            Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION,
         )
 
         Gtk.StyleContext.add_provider_for_display(
