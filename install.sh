@@ -77,7 +77,7 @@ read -r -p "Shortcut [$default_shortcut]: " wallpaper_shortcut
 wallpaper_shortcut="${wallpaper_shortcut:-$default_shortcut}"
 
 script_path="$SCRIPT_DIR/app.py"
-command="env GDK_BACKEND=wayland python3 $script_path"
+command=f"python3 {script_dir / 'app.py'}"
 
 base="/org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/"
 
