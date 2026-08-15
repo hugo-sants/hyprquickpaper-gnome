@@ -81,9 +81,9 @@ class WallpaperPicker:
 
         self.panel_height = 500
 
-        self.shear = -0.22
+        self.shear = -0.3
 
-        self.spacing = 0.1
+        self.spacing = 4.0
 
         self.selected_index = 0
 
@@ -92,12 +92,16 @@ class WallpaperPicker:
 
         self.selection_anim_source = None
 
-        # Carousel customization: selected size, distant size, and scale falloff.
-        self.max_carousel_scale = 1.18
+        # Carousel customization: selected size, distant size, scale falloff and horizontal/vertical expansion of the previews.
+        self.max_carousel_scale = 1.2
 
-        self.min_carousel_scale = 0.97
+        self.min_carousel_scale = 1.0
 
-        self.carousel_power = 1.5
+        self.carousel_power = 1.0
+
+        self.horizontal_scale = 1.6
+
+        self.vertical_scale = 1.1
 
         self.content_x = 0.0
         self.target_x = 0.0
@@ -535,7 +539,7 @@ class WallpaperPicker:
             return False
 
         self.content_x += (
-            delta * 0.18
+            delta * 0.09
         )
 
         self.area.queue_draw()
@@ -582,16 +586,14 @@ class WallpaperPicker:
                 self.target_selection
             )
 
-            self.selection_anim_source = (
-                None
-            )
+            self.selection_anim_source = None
 
             self.area.queue_draw()
 
             return False
 
         self.visual_selection += (
-            delta * 0.18
+            delta * 0.15
         )
 
         self.area.queue_draw()
@@ -986,44 +988,88 @@ class WallpaperPicker:
         tile_width,
         tile_height,
         scale,
+        index,
         selected
     ):
         cr.save()
 
-        center_x = (
-            tile_width / 2.0
-        )
+        center_x = tile_width / 2.0
+        center_y = tile_height / 2.0
 
-        center_y = (
-            tile_height / 2.0
-        )
-
-        cr.translate(
-            x + center_x,
-            y + center_y
-        )
-
-        cr.transform(
-            cairo.Matrix(
-                1.0,
-                0.0,
-                self.shear,
-                1.0,
-                0.0,
-                0.0
+        selection_progress = max(
+            0.0,
+            1.0 - abs(
+                self.visual_selection - index
             )
         )
 
-        # Appearance customization: increase 1.2 to make previews wider.
-        cr.scale(
-            scale * 1.2,
-            scale
+        scaled_width = (
+            tile_width
+            * (
+                1.0
+                + (
+                    self.horizontal_scale - 1.0
+                ) * selection_progress
+            )
         )
 
-        cr.translate(
-            -center_x,
-            -center_y
+        scaled_height = (
+            tile_height
+            * (
+                1.0
+                + (
+                    self.vertical_scale - 1.0
+                ) * selection_progress
+            )
         )
+
+        left = (
+            x
+            + center_x
+            - scaled_width / 2.0
+        )
+
+        top = (
+            y
+            + center_y
+            - scaled_height / 2.0
+        )
+
+        right = left + scaled_width
+        bottom = top + scaled_height
+
+        shear_offset = (
+            abs(self.shear)
+            * scaled_height
+        )
+
+        left -= shear_offset / 2.0
+        right -= shear_offset / 2.0
+
+        cr.new_path()
+
+        cr.move_to(
+            left + shear_offset,
+            top
+        )
+
+        cr.line_to(
+            right + shear_offset,
+            top
+        )
+
+        cr.line_to(
+            right,
+            bottom
+        )
+
+        cr.line_to(
+            left,
+            bottom
+        )
+
+        cr.close_path()
+        cr.clip()
 
         pix_info = self.images.get(
             path.name
@@ -1033,13 +1079,15 @@ class WallpaperPicker:
             self.draw_cover_pixbuf(
                 cr,
                 pix_info[1],
-                0,
-                0,
-                tile_width,
-                tile_height
+                left,
+                top,
+                scaled_width + shear_offset,
+                scaled_height
             )
 
         if selected and pix_info:
+            cr.reset_clip()
+
             cr.set_source_rgba(
                 self.border_color.red,
                 self.border_color.green,
@@ -1051,13 +1099,29 @@ class WallpaperPicker:
                 4.0
             )
 
-            cr.rectangle(
-                2.0,
-                2.0,
-                tile_width - 4.0,
-                tile_height - 4.0
+            cr.new_path()
+
+            cr.move_to(
+                left + shear_offset,
+                top
             )
 
+            cr.line_to(
+                right + shear_offset,
+                top
+            )
+
+            cr.line_to(
+                right,
+                bottom
+            )
+
+            cr.line_to(
+                left,
+                bottom
+            )
+
+            cr.close_path()
             cr.stroke()
 
         cr.restore()
@@ -1128,6 +1192,16 @@ class WallpaperPicker:
                 - self.content_x
             )
 
+            extra_width = (
+                tile_width
+                * (self.horizontal_scale - 1.0)
+            )
+
+            if index < self.selected_index:
+                x -= extra_width / 2.0
+            elif index > self.selected_index:
+                x += extra_width / 2.0
+
             margin = (
                 tile_width * 0.25
             )
@@ -1183,6 +1257,7 @@ class WallpaperPicker:
                 tile_width,
                 panel_h,
                 scale,
+                index,
                 index == self.selected_index
             )
 
@@ -1218,12 +1293,13 @@ class WallpaperPicker:
 
         return False
 
+
 class Application(Gtk.Application):
 
     def __init__(self):
         super().__init__(
             application_id=(
-                "dev.hugo.HyprQuickPaperGnome"
+                "wallpaper.picker"
             ),
             flags=0,
         )
@@ -1237,6 +1313,7 @@ class Application(Gtk.Application):
             )
 
         self.picker.show()
+
 
 def main():
     signal.signal(
