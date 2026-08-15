@@ -2,7 +2,7 @@
 
 ![HyprQuickPaper GNOME](assets/demo.gif)
 
-A lightweight GNOME/GTK4 wallpaper selector inspired by the visual style and interaction ideas of [ilyamiro's dotfiles](https://github.com/ilyamiro/ilyamiro), particularly the Hyprland-oriented workflow and the visual approach used in that environment. This project provides a standalone GNOME implementation without Quickshell or Wofi.
+A lightweight GNOME/GTK4 wallpaper selector inspired by the visual style and interaction ideas of [ilyamiro's dotfiles](https://github.com/ilyamiro), particularly the Hyprland-oriented workflow and the visual approach used in that environment. This project provides a standalone GNOME implementation without Quickshell or Wofi.
 
 The selector opens as a transparent overlay, displays wallpapers as an animated carousel, keeps the selected wallpaper visually prominent, supports circular keyboard navigation, and applies the selected image through GNOME's background settings.
 
@@ -269,3 +269,17 @@ window_height = math.ceil(
 
 This gives the selected wallpaper enough vertical room to grow without being clipped.
 
+## Uninstallation
+
+To remove the installed application, its cache, and the local configuration, run:
+
+```bash
+rm -rf ~/.local/share/hyprquickpaper-gnome
+rm -rf ~/.cache/hyprquickpaper
+```
+
+The GNOME keyboard shortcut created during installation is stored separately in GSettings. To remove it, open:
+
+**Settings → Keyboard → View and Customize Shortcuts → Custom Shortcuts**
+
+and remove the HyprQuickPaper GNOME shortcut.
