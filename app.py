@@ -170,28 +170,7 @@ class WallpaperPicker:
         provider.load_from_data(
             b"""
             window.background {
-                background: unset;
-                background-color: transparent;
-                background-image: none;
-                box-shadow: none;
-                border: none;
-            }
-
-            window.background > * {
-                background: unset;
-                background-color: transparent;
-                background-image: none;
-                box-shadow: none;
-                border: none;
-            }
-
-            drawingarea,
-            drawingarea.background {
-                background: unset;
-                background-color: transparent;
-                background-image: none;
-                box-shadow: none;
-                border: none;
+                background: rgba(0, 0, 0, 0.0);
             }
             """
         )
@@ -201,25 +180,6 @@ class WallpaperPicker:
             provider,
             Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION,
         )
-
-    def configure_transparent_surface(self):
-        native = self.window.get_native()
-
-        if native is not None:
-            surface = native.get_surface()
-
-            if surface is not None:
-                try:
-                    surface.set_opaque_region(None)
-                except Exception as exc:
-                    print(
-                        f"Could not clear opaque region: {exc}",
-                        file=sys.stderr,
-                    )
-
-        self.area.grab_focus()
-
-        return False
 
     def install_input_controllers(self):
 
@@ -329,10 +289,6 @@ class WallpaperPicker:
             )
 
         self.area.grab_focus()
-
-        GLib.idle_add(
-            self.configure_transparent_surface
-        )
 
         self.start_cache_generation()
 
