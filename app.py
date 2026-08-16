@@ -15,7 +15,7 @@ gi.require_version("Gtk", "4.0")
 gi.require_version("Gdk", "4.0")
 gi.require_version("GdkPixbuf", "2.0")
 
-from gi.repository import Gdk, GdkPixbuf, GLib, Gtk
+from gi.repository import Gdk, GdkPixbuf, Gio, GLib, Gtk
 
 
 APP_DIR = Path(__file__).resolve().parent
@@ -45,8 +45,13 @@ class WallpaperPicker:
 
         self.config = self.load_config()
 
-        self.wallpaper_dir = Path(self.config["wallpaper_path"]).expanduser()
-        self.cache_dir = Path(self.config["cache_path"]).expanduser()
+        self.wallpaper_dir = Path(
+            self.config["wallpaper_path"]
+        ).expanduser()
+
+        self.cache_dir = Path(
+            self.config["cache_path"]
+        ).expanduser()
 
         # Appearance customization: odd values (5, 7, 9) keep a single
         # wallpaper visually centered in the carousel.
@@ -70,8 +75,6 @@ class WallpaperPicker:
         self.visual_selection = 0.0
         self.target_selection = 0.0
 
-        self.selection_anim_source = None
-
         # Carousel customization: selected size, distant size, scale falloff and horizontal/vertical expansion of the previews.
         self.max_carousel_scale = 1.2
         self.min_carousel_scale = 1.0
@@ -81,7 +84,8 @@ class WallpaperPicker:
 
         self.content_x = 0.0
         self.target_x = 0.0
-        self.anim_source = None
+
+        self.animation_source = None
 
         self.drag_start_x = None
         self.drag_start_content_x = 0.0
@@ -95,7 +99,9 @@ class WallpaperPicker:
         self.wallpapers = []
 
         self.cache_process = None
-        self.cache_refresh_source = None
+
+        self.wallpaper_monitor = None
+        self.cache_monitor = None
 
         self.area = Gtk.DrawingArea()
         self.area.set_focusable(True)
@@ -170,6 +176,14 @@ class WallpaperPicker:
     def show(self):
         self.refresh_wallpapers()
 
+        try:
+            self.cache_dir.mkdir(parents=True, exist_ok=True)
+            self.load_cached_images()
+        except OSError:
+            pass
+
+        self.install_file_monitors()
+
         display = self.window.get_display()
         monitors = display.get_monitors()
 
@@ -201,13 +215,92 @@ class WallpaperPicker:
 
         self.start_cache_generation()
 
-        if self.cache_refresh_source is None:
-            self.cache_refresh_source = GLib.timeout_add(
-                350,
-                self.refresh_cache
-            )
-
         GLib.idle_add(self.area.grab_focus)
+
+    def install_file_monitors(self):
+        if self.wallpaper_monitor is None:
+            try:
+                wallpaper_file = Gio.File.new_for_path(
+                    str(self.wallpaper_dir)
+                )
+
+                self.wallpaper_monitor = (
+                    wallpaper_file.monitor_directory(
+                        Gio.FileMonitorFlags.NONE,
+                        None,
+                    )
+                )
+
+                self.wallpaper_monitor.connect(
+                    "changed",
+                    self.on_wallpaper_directory_changed,
+                )
+
+            except GLib.Error as exc:
+                print(
+                    f"Failed to monitor wallpaper directory: {exc}",
+                    file=sys.stderr,
+                )
+
+        if self.cache_monitor is None:
+            try:
+                cache_file = Gio.File.new_for_path(
+                    str(self.cache_dir)
+                )
+
+                self.cache_monitor = (
+                    cache_file.monitor_directory(
+                        Gio.FileMonitorFlags.NONE,
+                        None,
+                    )
+                )
+
+                self.cache_monitor.connect(
+                    "changed",
+                    self.on_cache_directory_changed,
+                )
+
+            except GLib.Error as exc:
+                print(
+                    f"Failed to monitor cache directory: {exc}",
+                    file=sys.stderr,
+                )
+
+    def on_wallpaper_directory_changed(
+        self,
+        _monitor,
+        _file,
+        _other_file,
+        event_type,
+    ):
+        if event_type not in {
+            Gio.FileMonitorEvent.CREATED,
+            Gio.FileMonitorEvent.DELETED,
+            Gio.FileMonitorEvent.MOVED_IN,
+            Gio.FileMonitorEvent.MOVED_OUT,
+            Gio.FileMonitorEvent.CHANGED,
+        }:
+            return
+
+        self.refresh_wallpapers()
+
+    def on_cache_directory_changed(
+        self,
+        _monitor,
+        _file,
+        _other_file,
+        event_type,
+    ):
+        if event_type not in {
+            Gio.FileMonitorEvent.CREATED,
+            Gio.FileMonitorEvent.DELETED,
+            Gio.FileMonitorEvent.MOVED_IN,
+            Gio.FileMonitorEvent.MOVED_OUT,
+            Gio.FileMonitorEvent.CHANGED,
+        }:
+            return
+
+        self.load_cached_images()
 
     def on_resize(self, _area, width, height):
         self.area.queue_draw()
@@ -253,17 +346,6 @@ class WallpaperPicker:
 
         self.area.queue_draw()
 
-    def refresh_cache(self):
-        self.refresh_wallpapers()
-
-        try:
-            self.cache_dir.mkdir(parents=True, exist_ok=True)
-            self.load_cached_images()
-        except OSError:
-            pass
-
-        return True
-
     def load_cached_images(self):
         for wall in self.wallpapers:
             cache_path = self.cache_dir / wall.name
@@ -282,11 +364,15 @@ class WallpaperPicker:
                 continue
 
             try:
-                pixbuf = GdkPixbuf.Pixbuf.new_from_file(str(cache_path))
+                pixbuf = GdkPixbuf.Pixbuf.new_from_file(
+                    str(cache_path)
+                )
+
                 self.images[wall.name] = (mtime, pixbuf)
+
             except Exception as exc:
                 print(
-                    f"Failed to load thumbnail " 
+                    f"Failed to load thumbnail "
                     f"{cache_path}: {exc}",
                     file=sys.stderr
                 )
@@ -315,6 +401,7 @@ class WallpaperPicker:
                 stderr=subprocess.DEVNULL,
                 start_new_session=True,
             )
+
         except OSError as exc:
             print(
                 f"Failed to start cache script: {exc}",
@@ -328,6 +415,13 @@ class WallpaperPicker:
 
         return tile_width, step
 
+    def start_animation(self):
+        if self.animation_source is None:
+            self.animation_source = GLib.timeout_add(
+                16,
+                self.animate,
+            )
+
     def set_target_scroll(self, value, animate=True):
         self.target_x = float(value)
 
@@ -336,20 +430,30 @@ class WallpaperPicker:
             self.area.queue_draw()
             return
 
-        if self.anim_source is None:
-            self.anim_source = GLib.timeout_add(16, self.animate_scroll)
+        self.start_animation()
 
-    def animate_scroll(self):
-        delta = self.target_x - self.content_x
+    def animate(self):
+        scroll_delta = self.target_x - self.content_x
+        selection_delta = self.target_selection - self.visual_selection
 
-        if abs(delta) < 0.5:
+        scroll_done = abs(scroll_delta) < 0.5
+        selection_done = abs(selection_delta) < 0.01
+
+        if scroll_done:
             self.content_x = self.target_x
-            self.anim_source = None
-            self.area.queue_draw()
-            return False
+        else:
+            self.content_x += scroll_delta * 0.09
 
-        self.content_x += delta * 0.09
+        if selection_done:
+            self.visual_selection = self.target_selection
+        else:
+            self.visual_selection += selection_delta * 0.15
+
         self.area.queue_draw()
+
+        if scroll_done and selection_done:
+            self.animation_source = None
+            return False
 
         return True
 
@@ -360,25 +464,10 @@ class WallpaperPicker:
         self.selected_index = int(index)
         self.target_selection = float(self.selected_index)
 
-        if self.selection_anim_source is None:
-            self.selection_anim_source = GLib.timeout_add(16,self.animate_selection)
+        self.start_animation()
 
         self.ensure_visible(self.selected_index)
         self.area.queue_draw()
-
-    def animate_selection(self):
-        delta = self.target_selection - self.visual_selection
-
-        if abs(delta) < 0.01:
-            self.visual_selection = self.target_selection
-            self.selection_anim_source = None
-            self.area.queue_draw()
-            return False
-
-        self.visual_selection += delta * 0.15
-        self.area.queue_draw()
-
-        return True
 
     def get_carousel_scale(self, index):
         distance = abs(index - self.visual_selection)
@@ -428,6 +517,7 @@ class WallpaperPicker:
                 stderr=subprocess.DEVNULL,
                 start_new_session=True,
             )
+
         except OSError as exc:
             print(
                 f"Failed to apply wallpaper: {exc}",
@@ -519,8 +609,7 @@ class WallpaperPicker:
 
         if (
             self.press_x is not None
-            and 
-            math.hypot(x - self.press_x, y - self.press_y) > 8
+            and math.hypot(x - self.press_x, y - self.press_y) > 8
         ):
             self.press_x = None
             self.press_y = None
@@ -639,11 +728,11 @@ class WallpaperPicker:
         center_x = tile_width / 2.0
         center_y = tile_height / 2.0
 
-        selection_progress = max(0.0,1.0 - abs(self.visual_selection - index))
+        selection_progress = max(0.0, 1.0 - abs(self.visual_selection - index))
 
         scaled_width = (tile_width * (1.0 + (self.horizontal_scale - 1.0) * selection_progress))
 
-        scaled_height = (tile_height * (1.0+ (self.vertical_scale - 1.0) * selection_progress))
+        scaled_height = (tile_height * (1.0 + (self.vertical_scale - 1.0) * selection_progress))
 
         left = x + center_x - scaled_width / 2.0
         top = y + center_y - scaled_height / 2.0
@@ -717,7 +806,7 @@ class WallpaperPicker:
 
         visible = []
 
-        visible_range = max(self.count_visible * 2, 6)
+        visible_range = max(self.count_visible + 2, 6)
 
         center = int(math.floor(self.visual_selection))
         start = center - visible_range
@@ -766,23 +855,24 @@ class WallpaperPicker:
             )
 
     def quit(self):
-        if self.cache_refresh_source:
-            GLib.source_remove(self.cache_refresh_source)
-            self.cache_refresh_source = None
+        if self.animation_source:
+            GLib.source_remove(self.animation_source)
+            self.animation_source = None
 
-        if self.anim_source:
-            GLib.source_remove(self.anim_source)
-            self.anim_source = None
+        if self.wallpaper_monitor:
+            self.wallpaper_monitor.cancel()
+            self.wallpaper_monitor = None
 
-        if self.selection_anim_source:
-            GLib.source_remove(self.selection_anim_source)
-            self.selection_anim_source = None
+        if self.cache_monitor:
+            self.cache_monitor.cancel()
+            self.cache_monitor = None
 
         self.app.quit()
 
     def on_close_request(self, _window):
         self.quit()
         return False
+
 
 class Application(Gtk.Application):
 
@@ -800,12 +890,14 @@ class Application(Gtk.Application):
 
         self.picker.show()
 
+
 def main():
     signal.signal(signal.SIGINT, signal.SIG_DFL)
 
     app = Application()
 
     raise SystemExit(app.run(sys.argv))
+
 
 if __name__ == "__main__":
     main()
