@@ -215,8 +215,6 @@ class WallpaperPicker:
 
         self.start_cache_generation()
 
-        GLib.idle_add(self.area.grab_focus)
-
     def install_file_monitors(self):
         if self.wallpaper_monitor is None:
             try:
