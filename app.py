@@ -16,6 +16,9 @@ gi.require_version("Gdk", "4.0")
 gi.require_version("GdkPixbuf", "2.0")
 
 from gi.repository import Gdk, GdkPixbuf, Gio, GLib, Gtk
+from cache.metadata import MetadataStore
+from wallpaper.repository import WallpaperRepository
+from ui.color_filter import ColorFilter
 
 
 APP_DIR = Path(__file__).resolve().parent
@@ -53,6 +56,17 @@ class WallpaperPicker:
             self.config["cache_path"]
         ).expanduser()
 
+        self.repository = WallpaperRepository(self.wallpaper_dir)
+
+        self.metadata_store = MetadataStore(
+            self.cache_dir / "metadata.json"
+        )
+
+        self.metadata_store.load()
+        self.repository.set_metadata(self.metadata_store.data)
+
+        self.active_color = None
+
         # Appearance customization: odd values (5, 7, 9) keep a single
         # wallpaper visually centered in the carousel.
         self.count_visible = max(
@@ -66,6 +80,9 @@ class WallpaperPicker:
         )
 
         self.panel_height = 500
+
+        self.filter_height = 64
+        self.filter_gap = 32
 
         self.shear = -0.3
         self.spacing = 4.0
@@ -109,7 +126,19 @@ class WallpaperPicker:
         self.area.set_vexpand(True)
         self.area.set_draw_func(self.draw)
 
-        self.window.set_child(self.area)
+        self.color_filter = ColorFilter(
+            self.apply_color_filter
+        )
+
+        self.color_filter.set_halign(Gtk.Align.CENTER)
+        self.color_filter.set_valign(Gtk.Align.START)
+        self.color_filter.set_margin_top(16)
+
+        self.overlay = Gtk.Overlay()
+        self.overlay.set_child(self.area)
+        self.overlay.add_overlay(self.color_filter)
+
+        self.window.set_child(self.overlay)
 
         self.install_input_controllers()
         self.install_css()
@@ -130,6 +159,36 @@ class WallpaperPicker:
             rgba.parse("#C27B63")
 
         return rgba
+
+    def update_metadata(self):
+        self.metadata_store.load()
+        self.repository.set_metadata(self.metadata_store.data)
+
+    def update_color_filter(self):
+        if not hasattr(self, "color_filter"):
+            return
+
+        colors = self.repository.get_available_colors()
+        self.color_filter.set_colors(colors)
+
+    def apply_color_filter(self, color_group):
+        self.active_color = color_group
+
+        self.wallpapers = self.repository.filter_by_color(
+            color_group
+        )
+
+        self.selected_index = 0
+        self.visual_selection = 0.0
+        self.target_selection = 0.0
+
+        if self.wallpapers:
+            self.selected_index = 0
+            self.visual_selection = 0.0
+            self.target_selection = 0.0
+            self.ensure_visible(0)
+
+        self.area.queue_draw()
 
     def install_css(self):
         provider = Gtk.CssProvider()
@@ -182,6 +241,10 @@ class WallpaperPicker:
         except OSError:
             pass
 
+        self.update_metadata()
+        self.repository.set_metadata(self.metadata_store.data)
+        self.update_color_filter()
+
         self.install_file_monitors()
 
         display = self.window.get_display()
@@ -194,7 +257,9 @@ class WallpaperPicker:
         )
 
         window_height = math.ceil(
-            self.panel_height * self.max_carousel_scale
+            self.filter_height
+            + self.panel_height * self.vertical_scale
+            + self.filter_gap * 2
         )
 
         if monitor is not None:
@@ -299,38 +364,39 @@ class WallpaperPicker:
             return
 
         self.load_cached_images()
+        self.update_metadata()
+        self.repository.set_metadata(self.metadata_store.data)
+        self.update_color_filter()
 
     def on_resize(self, _area, width, height):
         self.area.queue_draw()
 
     def get_panel_geometry(self, width, height):
-        panel_h = min(self.panel_height, height)
-        panel_y = (height - panel_h) / 2.0
+        available_height = height - self.filter_height
+
+        panel_h = min(
+            self.panel_height,
+            available_height
+        )
+
+        panel_y = (
+            self.filter_height
+            + self.filter_gap
+            + (
+                available_height
+                - self.filter_gap * 2
+                - panel_h
+            ) / 2.0
+        )
 
         return panel_y, panel_h
 
     def refresh_wallpapers(self):
-        try:
-            files = []
-
-            for path in self.wallpaper_dir.iterdir():
-                if (
-                    path.is_file()
-                    and path.suffix.lower() in {".jpg", ".png"}
-                ):
-                    files.append(path)
-
-            files.sort(key=lambda p: p.name.lower())
-
-        except OSError as exc:
-            print(
-                f"Failed to read wallpaper directory: {exc}",
-                file=sys.stderr,
-            )
-            files = []
+        self.repository.refresh()
+        self.repository.set_metadata(self.metadata_store.data)
 
         previous_count = len(self.wallpapers)
-        self.wallpapers = files
+        self.wallpapers = self.repository.get_all()
 
         if not self.wallpapers:
             self.selected_index = 0
