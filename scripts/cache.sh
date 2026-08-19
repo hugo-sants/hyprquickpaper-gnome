@@ -25,7 +25,11 @@ else
     exit 1
 fi
 
-find "$wallpaper_path" -type f \(     -iname "*.jpg" -o     -iname "*.jpeg" -o     -iname "*.png" \) | while read -r img; do
+find "$wallpaper_path" -type f \( \
+    -iname "*.jpg" -o \
+    -iname "*.jpeg" -o \
+    -iname "*.png" \
+\) | while read -r img; do
 
     filename=$(basename "$img")
     out="$cache_path/$filename"
@@ -34,7 +38,11 @@ find "$wallpaper_path" -type f \(     -iname "*.jpg" -o     -iname "*.jpeg" -o  
         continue
     fi
 
-    "$IM_BIN" "$img" -thumbnail x500 -strip -quality 85 "$out" &
+    "$IM_BIN" "$img" \
+        -thumbnail x500 \
+        -strip \
+        -quality 85 \
+        "$out" &
 
     if (( cache_batch_size > 0 )); then
         while (( $(jobs -rp | wc -l) >= cache_batch_size )); do
@@ -45,3 +53,9 @@ find "$wallpaper_path" -type f \(     -iname "*.jpg" -o     -iname "*.jpeg" -o  
 done
 
 wait
+
+cd "$APP_DIR"
+
+PYTHONPATH="$APP_DIR" python3 -m cache.metadata \
+    "$wallpaper_path" \
+    "$cache_path"
