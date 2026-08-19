@@ -52,6 +52,9 @@ mkdir -p "$wallpaper_dir" "$CACHE_DIR"
 cp "$SCRIPT_DIR/app.py" "$INSTALL_DIR/"
 cp "$SCRIPT_DIR/config.example.json" "$INSTALL_DIR/"
 cp -r "$SCRIPT_DIR/scripts" "$INSTALL_DIR/"
+cp -r "$SCRIPT_DIR/cache" "$INSTALL_DIR/"
+cp -r "$SCRIPT_DIR/wallpaper" "$INSTALL_DIR/"
+cp -r "$SCRIPT_DIR/ui" "$INSTALL_DIR/"
 
 CONFIG_EXAMPLE="$INSTALL_DIR/config.example.json"
 
