@@ -1,6 +1,6 @@
 # HyprQuickPaper GNOME
 
-![HyprQuickPaper GNOME](assets/demo.gif)
+<video src="assets/demo.mp4" autoplay loop muted playsinline></video>
 
 A lightweight GNOME/GTK4 wallpaper selector focused on a fast, visual and keyboard-friendly workflow. The project provides a standalone GNOME implementation without Quickshell or Wofi.
 
