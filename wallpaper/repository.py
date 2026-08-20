@@ -40,6 +40,18 @@ class WallpaperRepository:
             == color_group
         ]
 
+    def filter_by_name(self, query):
+        query = query.casefold().strip()
+
+        if not query:
+            return self.get_all()
+
+        return [
+            path
+            for path in self.wallpapers
+            if query in path.name.casefold()
+        ]
+
     def get_available_colors(self):
         colors = []
         seen = set()
