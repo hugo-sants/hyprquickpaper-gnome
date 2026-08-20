@@ -127,7 +127,9 @@ class WallpaperPicker:
         self.area.set_draw_func(self.draw)
 
         self.color_filter = ColorFilter(
-            self.apply_color_filter
+            self.apply_color_filter,
+            self.apply_search_filter,
+            self.on_search_key,
         )
 
         self.color_filter.set_halign(Gtk.Align.CENTER)
@@ -186,6 +188,44 @@ class WallpaperPicker:
             self.selected_index = 0
             self.visual_selection = 0.0
             self.target_selection = 0.0
+            self.ensure_visible(0)
+
+        self.area.queue_draw()
+
+    def on_search_key(self, key):
+        if key in KEY_NEXT:
+            self.move_selection(1)
+
+        elif key in KEY_PREVIOUS:
+            self.move_selection(-1)
+
+        elif key in KEY_JUMP_FORWARD:
+            self.move_selection(self.count_visible)
+
+        elif key in KEY_JUMP_BACKWARD:
+            self.move_selection(-self.count_visible)
+
+        elif key in KEY_APPLY:
+            self.activate_current()
+
+        elif key in KEY_QUIT:
+            self.area.grab_focus()
+
+    def apply_search_filter(self, query):
+        if query:
+            self.wallpapers = self.repository.filter_by_name(
+                query
+            )
+        else:
+            self.wallpapers = self.repository.filter_by_color(
+                self.active_color
+            )
+
+        self.selected_index = 0
+        self.visual_selection = 0.0
+        self.target_selection = 0.0
+
+        if self.wallpapers:
             self.ensure_visible(0)
 
         self.area.queue_draw()
@@ -817,6 +857,7 @@ class WallpaperPicker:
         cr.line_to(left, bottom)
 
         cr.close_path()
+
         cr.clip()
 
         pix_info = self.images.get(path.name)
@@ -851,6 +892,7 @@ class WallpaperPicker:
             cr.line_to(left, bottom)
 
             cr.close_path()
+
             cr.stroke()
 
         cr.restore()
