@@ -1,6 +1,6 @@
 # HyprQuickPaper GNOME
 
-![HyprQuickPaper GNOME](assets/demo.gif)
+![HyprQuickPaper GNOME](assets/demo.png)
 
 A lightweight GNOME/GTK4 wallpaper selector focused on a fast, visual and keyboard-friendly workflow. The project provides a standalone GNOME implementation without Quickshell or Wofi.
 
@@ -26,7 +26,7 @@ Wallpapers are displayed in a horizontal carousel with:
 
 ### Search
 
-![Wallpaper search](assets/search.gif)
+![Wallpaper search](assets/search.png)
 
 A search button at the end of the color filter opens a compact search field.
 
@@ -43,7 +43,7 @@ The back button closes the search and restores the normal filter interface.
 
 ### Color filtering
 
-![Color filter](assets/color-filter.gif)
+![Color filter](assets/color-filter.png)
 
 The color filter provides a visual way to narrow the wallpaper collection.
 
