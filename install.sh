@@ -1,11 +1,14 @@
 #!/usr/bin/env bash
+
 set -euo pipefail
 
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+
 INSTALL_DIR="$HOME/.local/share/hyprquickpaper-gnome"
 
 CONFIG_EXAMPLE="$SCRIPT_DIR/config.example.json"
 CONFIG_FILE="$INSTALL_DIR/config.json"
+
 CACHE_DIR="$HOME/.cache/hyprquickpaper/thumbs"
 
 if [[ ! -f "$CONFIG_EXAMPLE" ]]; then
@@ -31,11 +34,13 @@ default_wallpaper_dir="$(detect_default_wallpaper_dir)"
 
 echo "HyprQuickPaper GNOME installation"
 echo
+
 echo "Enter the directory that contains your wallpapers."
 echo "Press Enter to use the default: $default_wallpaper_dir"
 echo
 
 read -r -p "Wallpaper directory [$default_wallpaper_dir]: " wallpaper_dir
+
 wallpaper_dir="${wallpaper_dir:-$default_wallpaper_dir}"
 
 if [[ "$wallpaper_dir" == "~/"* ]]; then
@@ -93,13 +98,16 @@ chmod +x "$INSTALL_DIR/scripts/commands.sh"
 default_shortcut="<Super>w"
 
 echo
+
 echo "Choose the GNOME shortcut that should open HyprQuickPaper GNOME."
 echo "Use GNOME accelerator syntax, for example: <Super>w or <Super><Alt>w"
+
 read -r -p "Shortcut [$default_shortcut]: " wallpaper_shortcut
+
 wallpaper_shortcut="${wallpaper_shortcut:-$default_shortcut}"
 
 script_path="$INSTALL_DIR/app.py"
-command="$script_path"
+command="env GSK_RENDERER=gl $script_path"
 
 base="/org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/"
 
@@ -145,17 +153,24 @@ gsettings set \
 echo "GNOME shortcut configured: $wallpaper_shortcut"
 
 echo
+
 echo "Installation complete."
 echo "Installation directory: $INSTALL_DIR"
 echo "Wallpaper directory:    $wallpaper_dir"
 echo "Cache directory:        $CACHE_DIR"
 echo "GNOME shortcut:         $wallpaper_shortcut"
+
 echo
+
 echo "Test the selector using the configured shortcut:"
 echo "  $wallpaper_shortcut"
+
 echo
+
 echo "Or run it directly:"
-echo "  $INSTALL_DIR/app.py"
+echo "  GSK_RENDERER=gl $INSTALL_DIR/app.py"
+
 echo
+
 echo "Or, explicitly on Wayland:"
-echo "  GDK_BACKEND=wayland $INSTALL_DIR/app.py"
+echo "  GDK_BACKEND=wayland GSK_RENDERER=gl $INSTALL_DIR/app.py"
