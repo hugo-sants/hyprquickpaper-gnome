@@ -1,0 +1,96 @@
+.color-filter {
+    background-color: rgba(57, 58, 58, 0.60);
+    border-radius: 10px;
+    padding: 8px;
+}
+
+.color-filter button {
+    padding: 0;
+    margin: 0;
+    border: none;
+    box-shadow: none;
+}
+
+.color-filter .all-button {
+    border-radius: 5px;
+    background-color: rgba(255, 255, 255, 0.10);
+}
+
+.color-filter .color-button {
+    border-radius: 10px;
+}
+
+.color-filter button.selected {
+    box-shadow:
+        0 0 0 1.9px rgba(255, 255, 255, 0.634);
+}
+
+.color-filter .color-red {
+    background-color: #E53935;
+}
+
+.color-filter .color-orange {
+    background-color: #FB8C00;
+}
+
+.color-filter .color-yellow {
+    background-color: #FDD835;
+}
+
+.color-filter .color-green {
+    background-color: #43A047;
+}
+
+.color-filter .color-cyan {
+    background-color: #00ACC1;
+}
+
+.color-filter .color-blue {
+    background-color: #1E88E5;
+}
+
+.color-filter .color-purple {
+    background-color: #8E24AA;
+}
+
+.color-filter .color-pink {
+    background-color: #D81B60;
+}
+
+.color-filter .color-gray {
+    background-color: #9E9E9E;
+}
+
+.color-filter .search-button {
+    background-color: rgba(255, 255, 255, 0.10);
+    border-radius: 8px;
+}
+
+.color-filter .search-icon {
+    -gtk-icon-size: 24px;
+}
+
+.color-filter .search-button:hover {
+    background-color: rgba(255, 255, 255, 0.10);
+}
+
+.color-filter .search-back-button {
+    background-color: rgba(255, 255, 255, 0.10);
+    border-radius: 8px;
+}
+
+.color-filter .search-entry {
+    min-width: 220px;
+    min-height: 32px;
+    padding: 0 10px;
+    border-radius: 8px;
+    background-color: rgba(255, 255, 255, 0.08);
+    color: #ffffff;
+    border: none;
+    box-shadow: none;
+}
+
+.color-filter .search-entry:focus {
+    box-shadow: none;
+    outline: none;
+}
