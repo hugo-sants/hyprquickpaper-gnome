@@ -41,6 +41,7 @@ class WallpaperPicker:
     def __init__(self, app: Gtk.Application):
         self.app = app
         self.window = Gtk.ApplicationWindow(application=app)
+        self.window.add_css_class("hyprquickpaper-window")
         self.window.set_title("HyprQuickPaper GNOME")
         self.window.set_decorated(False)
         self.window.set_resizable(False)
@@ -115,6 +116,7 @@ class WallpaperPicker:
         self.color_filter.set_margin_top(16)
 
         self.overlay = Gtk.Overlay()
+        self.overlay.add_css_class("hyprquickpaper-overlay")
         self.overlay.set_child(self.area)
         self.overlay.add_overlay(self.color_filter)
         self.window.set_child(self.overlay)
@@ -199,13 +201,13 @@ class WallpaperPicker:
     def install_css(self):
         provider = Gtk.CssProvider()
 
-        provider.load_from_data(
-            """
-            window.background {
-                background: rgba(0, 0, 0, 0.0);
-            }
-            """
+        css_path = (
+            Path(__file__).resolve().parent
+            / "ui"
+            / "window.css"
         )
+
+        provider.load_from_path(str(css_path))
 
         Gtk.StyleContext.add_provider_for_display(
             self.window.get_display(),
