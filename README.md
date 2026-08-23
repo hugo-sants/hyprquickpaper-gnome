@@ -67,15 +67,66 @@ The selected wallpaper is applied through GNOME's desktop background settings.
 
 ## Dependencies
 
-The project is intended for Fedora GNOME.
+The project is designed for GNOME and supports both Wayland and X11 sessions. It requires Python 3, GTK 4, PyGObject, Pycairo, `jq`, ImageMagick, and the GNOME `gsettings` command.
 
-Install the required system dependencies:
+### Fedora
 
 ```bash
-sudo dnf install gtk4 python3-gobject python3-cairo jq ImageMagick
+sudo dnf install \
+    gtk4 \
+    python3-gobject \
+    python3-cairo \
+    glib2 \
+    jq \
+    ImageMagick
 ```
 
-The runtime also expects GNOME's `gsettings` command and a Wayland session.
+### Ubuntu / Debian
+
+The package names differ from Fedora. On Ubuntu or Debian systems with GTK 4 available:
+
+```bash
+sudo apt update
+sudo apt install \
+    python3 \
+    python3-gi \
+    python3-cairo \
+    python3-gi-cairo \
+    gir1.2-gtk-4.0 \
+    libglib2.0-bin \
+    jq \
+    imagemagick
+```
+
+`libglib2.0-bin` provides `gsettings`, which is used by the installer to create the GNOME keyboard shortcut.
+
+### Arch Linux
+
+```bash
+sudo pacman -S \
+    gtk4 \
+    python-gobject \
+    python-cairo \
+    glib2 \
+    jq \
+    imagemagick
+```
+
+### Other distributions
+
+Other GNOME-based distributions can also run the project when they provide the equivalent packages for:
+
+* Python 3
+* GTK 4
+* PyGObject
+* Pycairo
+* GdkPixbuf / GTK 4 introspection data
+* GLib and `gsettings`
+* `jq`
+* ImageMagick
+
+Package names vary between distributions, so install the corresponding packages from your distribution's repositories.
+
 
 ## Project structure
 
