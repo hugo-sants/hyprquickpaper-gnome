@@ -1,13 +1,147 @@
 from pathlib import Path
 
 import cairo
-from pathlib import Path
-
 import gi
 
 gi.require_version("Gtk", "4.0")
 
 from gi.repository import Gdk, GLib, Gtk
+
+
+COLOR_VALUES = {
+    "red": "#E53935",
+    "orange": "#FB8C00",
+    "yellow": "#FDD835",
+    "green": "#43A047",
+    "cyan": "#00ACC1",
+    "blue": "#1E88E5",
+    "purple": "#8E24AA",
+    "pink": "#D81B60",
+    "gray": "#9E9E9E",
+}
+
+
+class ColorSwatch(Gtk.DrawingArea):
+    def __init__(self, color_group):
+        super().__init__()
+
+        self.color_group = color_group
+        self.selected = False
+
+        self.set_content_width(32)
+        self.set_content_height(32)
+        self.set_hexpand(True)
+        self.set_vexpand(True)
+        self.set_halign(Gtk.Align.FILL)
+        self.set_valign(Gtk.Align.FILL)
+
+        self.set_draw_func(self.draw)
+
+    def set_selected(self, selected):
+        if self.selected == selected:
+            return
+
+        self.selected = selected
+        self.queue_draw()
+
+    def draw(self, _area, cr, width, height):
+        color = Gdk.RGBA()
+
+        if not color.parse(
+            COLOR_VALUES.get(
+                self.color_group,
+                "#9E9E9E",
+            )
+        ):
+            color.parse("#9E9E9E")
+
+        radius = 8.0
+        inset = 2.0
+
+        x = inset
+        y = inset
+        w = width - inset * 2.0
+        h = height - inset * 2.0
+
+        cr.new_path()
+        cr.arc(
+            x + radius,
+            y + radius,
+            radius,
+            3.141592653589793,
+            4.71238898038469,
+        )
+        cr.arc(
+            x + w - radius,
+            y + radius,
+            radius,
+            4.71238898038469,
+            0.0,
+        )
+        cr.arc(
+            x + w - radius,
+            y + h - radius,
+            radius,
+            0.0,
+            1.5707963267948966,
+        )
+        cr.arc(
+            x + radius,
+            y + h - radius,
+            radius,
+            1.5707963267948966,
+            3.141592653589793,
+        )
+        cr.close_path()
+
+        cr.set_source_rgba(
+            color.red,
+            color.green,
+            color.blue,
+            color.alpha,
+        )
+        cr.fill()
+
+        if self.selected:
+            cr.new_path()
+            cr.arc(
+                x + radius,
+                y + radius,
+                radius,
+                3.141592653589793,
+                4.71238898038469,
+            )
+            cr.arc(
+                x + w - radius,
+                y + radius,
+                radius,
+                4.71238898038469,
+                0.0,
+            )
+            cr.arc(
+                x + w - radius,
+                y + h - radius,
+                radius,
+                0.0,
+                1.5707963267948966,
+            )
+            cr.arc(
+                x + radius,
+                y + h - radius,
+                radius,
+                1.5707963267948966,
+                3.141592653589793,
+            )
+            cr.close_path()
+
+            cr.set_source_rgba(
+                1.0,
+                1.0,
+                1.0,
+                0.95,
+            )
+            cr.set_line_width(1.9)
+            cr.stroke()
 
 
 class ColorFilter(Gtk.Box):
@@ -31,9 +165,8 @@ class ColorFilter(Gtk.Box):
 
         self.active_color = None
         self.buttons = {}
-
+        self.swatches = {}
         self.current_colors = []
-
         self.search_entry = None
         self.search_source = None
         self.search_mode = False
@@ -66,6 +199,7 @@ class ColorFilter(Gtk.Box):
             self.remove(child)
 
         self.buttons.clear()
+        self.swatches.clear()
 
         self.add_all_button()
 
@@ -77,13 +211,11 @@ class ColorFilter(Gtk.Box):
 
     def add_all_button(self):
         container = Gtk.Box()
-
         container.set_size_request(32, 32)
         container.set_halign(Gtk.Align.CENTER)
         container.set_valign(Gtk.Align.CENTER)
 
         button = Gtk.Button()
-
         button.add_css_class("all-button")
         button.set_focusable(False)
         button.set_hexpand(True)
@@ -96,6 +228,7 @@ class ColorFilter(Gtk.Box):
         )
 
         icon.add_css_class("all-icon")
+
         button.set_child(icon)
 
         button.connect(
@@ -105,29 +238,31 @@ class ColorFilter(Gtk.Box):
         )
 
         container.append(button)
-
         self.append(container)
+
         self.buttons[None] = button
 
     def add_color_button(self, color_group):
         container = Gtk.Box()
-
         container.set_size_request(32, 32)
         container.set_halign(Gtk.Align.CENTER)
         container.set_valign(Gtk.Align.CENTER)
 
         button = Gtk.Button()
-
         button.add_css_class("color-button")
-        button.add_css_class(
-            f"color-{color_group}"
-        )
-
         button.set_focusable(False)
         button.set_hexpand(True)
         button.set_vexpand(True)
         button.set_halign(Gtk.Align.FILL)
         button.set_valign(Gtk.Align.FILL)
+
+        button.set_tooltip_text(
+            color_group.capitalize()
+        )
+
+        swatch = ColorSwatch(color_group)
+
+        button.set_child(swatch)
 
         button.connect(
             "clicked",
@@ -136,19 +271,18 @@ class ColorFilter(Gtk.Box):
         )
 
         container.append(button)
-
         self.append(container)
+
         self.buttons[color_group] = button
+        self.swatches[color_group] = swatch
 
     def add_search_button(self):
         container = Gtk.Box()
-
         container.set_size_request(32, 32)
         container.set_halign(Gtk.Align.CENTER)
         container.set_valign(Gtk.Align.CENTER)
 
         button = Gtk.Button()
-
         button.add_css_class("search-button")
         button.set_focusable(False)
         button.set_hexpand(True)
@@ -170,7 +304,6 @@ class ColorFilter(Gtk.Box):
         )
 
         container.append(button)
-
         self.append(container)
 
     def open_search(self, _button):
@@ -183,15 +316,14 @@ class ColorFilter(Gtk.Box):
             self.remove(child)
 
         self.buttons.clear()
+        self.swatches.clear()
 
         back_container = Gtk.Box()
-
         back_container.set_size_request(32, 32)
         back_container.set_halign(Gtk.Align.CENTER)
         back_container.set_valign(Gtk.Align.CENTER)
 
         back_button = Gtk.Button()
-
         back_button.add_css_class("search-back-button")
         back_button.set_focusable(False)
         back_button.set_hexpand(True)
@@ -211,7 +343,6 @@ class ColorFilter(Gtk.Box):
         )
 
         back_container.append(back_button)
-
         self.append(back_container)
 
         self.search_entry = Gtk.SearchEntry()
@@ -241,7 +372,6 @@ class ColorFilter(Gtk.Box):
         )
 
         self.append(self.search_entry)
-
         self.search_entry.grab_focus()
 
     def close_search(self, _button=None):
@@ -249,7 +379,9 @@ class ColorFilter(Gtk.Box):
             return
 
         if self.search_source is not None:
-            GLib.source_remove(self.search_source)
+            GLib.source_remove(
+                self.search_source
+            )
             self.search_source = None
 
         self.search_mode = False
@@ -258,12 +390,13 @@ class ColorFilter(Gtk.Box):
         self.set_colors(self.current_colors)
 
         self.on_search_changed("")
-
         self.set_active(self.active_color)
 
     def on_search_entry_changed(self, entry):
         if self.search_source is not None:
-            GLib.source_remove(self.search_source)
+            GLib.source_remove(
+                self.search_source
+            )
 
         query = entry.get_text()
 
@@ -276,7 +409,6 @@ class ColorFilter(Gtk.Box):
     def run_search(self, query):
         self.search_source = None
         self.on_search_changed(query)
-
         return False
 
     def on_search_activate(self, entry):
@@ -308,11 +440,13 @@ class ColorFilter(Gtk.Box):
         }:
             self.on_search_key(key)
 
-            return True
+        return True
 
-        return False
-
-    def on_button_clicked(self, _button, color_group):
+    def on_button_clicked(
+        self,
+        _button,
+        color_group,
+    ):
         self.set_active(color_group)
         self.on_filter_changed(color_group)
 
@@ -324,3 +458,8 @@ class ColorFilter(Gtk.Box):
                 button.add_css_class("selected")
             else:
                 button.remove_css_class("selected")
+
+        for group, swatch in self.swatches.items():
+            swatch.set_selected(
+                group == color_group
+            )
