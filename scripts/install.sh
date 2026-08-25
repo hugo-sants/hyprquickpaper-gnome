@@ -3,12 +3,11 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_DIR="$(cd -- "$SCRIPT_DIR/.." && pwd)"
 
 INSTALL_DIR="$HOME/.local/share/hyprquickpaper-gnome"
-
-CONFIG_EXAMPLE="$SCRIPT_DIR/config.example.json"
+CONFIG_EXAMPLE="$PROJECT_DIR/config.example.json"
 CONFIG_FILE="$INSTALL_DIR/config.json"
-
 CACHE_DIR="$HOME/.cache/hyprquickpaper/thumbs"
 
 if [[ ! -f "$CONFIG_EXAMPLE" ]]; then
@@ -34,7 +33,6 @@ default_wallpaper_dir="$(detect_default_wallpaper_dir)"
 
 echo "HyprQuickPaper GNOME installation"
 echo
-
 echo "Enter the directory that contains your wallpapers."
 echo "Press Enter to use the default: $default_wallpaper_dir"
 echo
@@ -46,7 +44,7 @@ wallpaper_dir="${wallpaper_dir:-$default_wallpaper_dir}"
 if [[ "$wallpaper_dir" == "~/"* ]]; then
     wallpaper_dir="$HOME/${wallpaper_dir#~/}"
 elif [[ "$wallpaper_dir" != /* ]]; then
-    wallpaper_dir="$SCRIPT_DIR/$wallpaper_dir"
+    wallpaper_dir="$PROJECT_DIR/$wallpaper_dir"
 fi
 
 wallpaper_dir="$(realpath -m "$wallpaper_dir")"
@@ -54,12 +52,12 @@ wallpaper_dir="$(realpath -m "$wallpaper_dir")"
 mkdir -p "$INSTALL_DIR"
 mkdir -p "$wallpaper_dir" "$CACHE_DIR"
 
-cp "$SCRIPT_DIR/app.py" "$INSTALL_DIR/"
-cp "$SCRIPT_DIR/config.example.json" "$INSTALL_DIR/"
-cp -r "$SCRIPT_DIR/scripts" "$INSTALL_DIR/"
-cp -r "$SCRIPT_DIR/cache" "$INSTALL_DIR/"
-cp -r "$SCRIPT_DIR/wallpaper" "$INSTALL_DIR/"
-cp -r "$SCRIPT_DIR/ui" "$INSTALL_DIR/"
+cp "$PROJECT_DIR/app.py" "$INSTALL_DIR/"
+cp "$PROJECT_DIR/config.example.json" "$INSTALL_DIR/"
+cp -r "$PROJECT_DIR/scripts" "$INSTALL_DIR/"
+cp -r "$PROJECT_DIR/cache" "$INSTALL_DIR/"
+cp -r "$PROJECT_DIR/wallpaper" "$INSTALL_DIR/"
+cp -r "$PROJECT_DIR/ui" "$INSTALL_DIR/"
 
 CONFIG_EXAMPLE="$INSTALL_DIR/config.example.json"
 
@@ -91,14 +89,12 @@ Path(output).write_text(
 PY
 
 chmod +x "$INSTALL_DIR/app.py"
-chmod +x "$INSTALL_DIR/scripts/cache.sh"
-chmod +x "$INSTALL_DIR/scripts/commands.sh"
 
 # Configure a GNOME custom shortcut without replacing existing custom shortcuts.
+
 default_shortcut="<Super>w"
 
 echo
-
 echo "Choose the GNOME shortcut that should open HyprQuickPaper GNOME."
 echo "Use GNOME accelerator syntax, for example: <Super>w or <Super><Alt>w"
 
@@ -108,12 +104,9 @@ wallpaper_shortcut="${wallpaper_shortcut:-$default_shortcut}"
 
 script_path="$INSTALL_DIR/app.py"
 command="env GSK_RENDERER=gl $script_path"
-
 base="/org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/"
 
-existing="$(gsettings get \
-    org.gnome.settings-daemon.plugins.media-keys \
-    custom-keybindings)"
+existing="$(gsettings get org.gnome.settings-daemon.plugins.media-keys custom-keybindings)"
 
 index=0
 
@@ -130,10 +123,7 @@ else
     new_keybindings+=", '$shortcut_path']"
 fi
 
-gsettings set \
-    org.gnome.settings-daemon.plugins.media-keys \
-    custom-keybindings \
-    "$new_keybindings"
+gsettings set org.gnome.settings-daemon.plugins.media-keys custom-keybindings "$new_keybindings"
 
 gsettings set \
     "org.gnome.settings-daemon.plugins.media-keys.custom-keybinding:${shortcut_path}" \
@@ -151,26 +141,18 @@ gsettings set \
     "$wallpaper_shortcut"
 
 echo "GNOME shortcut configured: $wallpaper_shortcut"
-
 echo
-
 echo "Installation complete."
 echo "Installation directory: $INSTALL_DIR"
 echo "Wallpaper directory:    $wallpaper_dir"
 echo "Cache directory:        $CACHE_DIR"
 echo "GNOME shortcut:         $wallpaper_shortcut"
-
 echo
-
 echo "Test the selector using the configured shortcut:"
 echo "  $wallpaper_shortcut"
-
 echo
-
 echo "Or run it directly:"
 echo "  GSK_RENDERER=gl $INSTALL_DIR/app.py"
-
 echo
-
 echo "Or, explicitly on Wayland:"
 echo "  GDK_BACKEND=wayland GSK_RENDERER=gl $INSTALL_DIR/app.py"
