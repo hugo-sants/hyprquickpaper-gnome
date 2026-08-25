@@ -1,0 +1,12 @@
+window.hyprquickpaper-window,
+window.hyprquickpaper-window.background {
+    background: transparent;
+    background-color: rgba(0, 0, 0, 0);
+    background-image: none;
+    box-shadow: none;
+}
+
+overlay.hyprquickpaper-overlay {
+    background: transparent;
+    background-color: rgba(0, 0, 0, 0);
+}

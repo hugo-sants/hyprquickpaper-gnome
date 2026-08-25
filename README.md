@@ -2,9 +2,9 @@
 
 ![HyprQuickPaper GNOME](assets/demo.png)
 
-A lightweight GNOME/GTK4 wallpaper selector focused on a fast, visual and keyboard-friendly workflow. The project provides a standalone GNOME implementation without Quickshell or Wofi.
+A lightweight wallpaper selector for GNOME/GTK4, focused on a fast, visual, and keyboard-optimized workflow. The project offers a standalone implementation for GNOME.
 
-The selector opens as a transparent overlay and presents wallpapers through an animated carousel. The currently selected wallpaper is visually emphasized while the surrounding wallpapers remain visible, making it possible to browse a large collection quickly without opening a traditional file picker.
+The selected wallpaper is visually highlighted while the others remain visible, allowing for quick navigation through a large collection without the need to open a traditional file picker.
 
 It also provides color-based filtering and name search, allowing wallpapers to be found visually or directly by filename.
 
@@ -67,15 +67,65 @@ The selected wallpaper is applied through GNOME's desktop background settings.
 
 ## Dependencies
 
-The project is intended for Fedora GNOME.
+The project is designed for GNOME and supports both Wayland and X11 sessions. It requires Python 3, GTK 4, PyGObject, Pycairo, `jq`, ImageMagick, and the GNOME `gsettings` command.
 
-Install the required system dependencies:
+### Fedora
 
 ```bash
-sudo dnf install gtk4 python3-gobject python3-cairo jq ImageMagick
+sudo dnf install \
+    gtk4 \
+    python3-gobject \
+    python3-cairo \
+    glib2 \
+    jq \
+    ImageMagick
 ```
 
-The runtime also expects GNOME's `gsettings` command and a Wayland session.
+### Ubuntu / Debian
+
+The package names differ from Fedora. On Ubuntu or Debian systems with GTK 4 available:
+
+```bash
+sudo apt update
+sudo apt install \
+    python3 \
+    python3-gi \
+    python3-cairo \
+    python3-gi-cairo \
+    gir1.2-gtk-4.0 \
+    libglib2.0-bin \
+    jq \
+    imagemagick
+```
+
+`libglib2.0-bin` provides `gsettings`, which is used by the installer to create the GNOME keyboard shortcut.
+
+### Arch Linux
+
+```bash
+sudo pacman -S \
+    gtk4 \
+    python-gobject \
+    python-cairo \
+    glib2 \
+    jq \
+    imagemagick
+```
+
+### Other distributions
+
+Other GNOME-based distributions can also run the project when they provide the equivalent packages for:
+
+* Python 3
+* GTK 4
+* PyGObject
+* Pycairo
+* GdkPixbuf / GTK 4 introspection data
+* GLib and `gsettings`
+* `jq`
+* ImageMagick
+
+Package names vary between distributions, so install the corresponding packages from your distribution's repositories.
 
 ## Project structure
 
@@ -83,7 +133,9 @@ The runtime also expects GNOME's `gsettings` command and a Wayland session.
 hyprquickpaper-gnome/
 ├── app.py
 ├── config.example.json
+├── Makefile
 ├── install.sh
+├── uninstall.sh
 ├── cache/
 │   ├── metadata.py
 │   └── ...
@@ -92,14 +144,15 @@ hyprquickpaper-gnome/
 │   └── repository.py
 ├── ui/
 │   ├── color_filter.py
-│   └── color_filter.css
+│   ├── color_filter.css
+│   └── window.css
 ├── scripts/
 │   ├── cache.sh
 │   └── commands.sh
 ├── assets/
-│   ├── demo.gif
-│   ├── color-filter.gif
-│   └── search.gif
+│   ├── demo.png
+│   ├── color-filter.png
+│   └── search.png
 ├── README.md
 ├── .gitignore
 └── .gitattributes
@@ -114,16 +167,10 @@ git clone <your-repository-url>
 cd hyprquickpaper-gnome
 ```
 
-Make the installer executable:
+The project uses the provided `Makefile` as the main entry point for installation.
 
 ```bash
-chmod +x install.sh
-```
-
-Run it:
-
-```bash
-./install.sh
+make install
 ```
 
 The installer asks where your wallpapers are stored and which GNOME keyboard shortcut should open the picker.
@@ -141,6 +188,8 @@ GNOME accelerator syntax can also be used, for example:
 <Super><Alt>w
 ```
 
+The installer preserves existing GNOME custom shortcuts and creates a new shortcut for HyprQuickPaper GNOME.
+
 ### Wallpaper directory
 
 The installer automatically chooses a default wallpaper directory in this order:
@@ -152,6 +201,8 @@ The installer automatically chooses a default wallpaper directory in this order:
 5. `~/Pictures/Wallpapers` as the fallback
 
 The selected directory is created automatically when necessary.
+
+You can also enter another directory when prompted by the installer.
 
 ### Installation locations
 
@@ -167,19 +218,92 @@ Thumbnail and metadata cache:
 ~/.cache/hyprquickpaper/thumbs
 ```
 
+The generated configuration is stored at:
+
+```text
+~/.local/share/hyprquickpaper-gnome/config.json
+```
+
+The installer copies the application, UI, cache, wallpaper and script modules into the installation directory so the installed application can run independently from the original repository.
+
 After installation, use the configured GNOME shortcut to open the selector.
 
-It can also be run directly:
+## Run
+
+The recommended way to run the application from the repository is:
 
 ```bash
+make run
+```
+
+This uses the renderer configuration intended for the selector and is preferable to invoking `python3 app.py` directly.
+
+The application can also be started manually with:
+
+```bash
+GSK_RENDERER=ngl python3 app.py
+```
+
+When running the installed application directly:
+
+```bash
+GSK_RENDERER=ngl ~/.local/share/hyprquickpaper-gnome/app.py
+```
+
+On Wayland, the backend can be specified explicitly:
+
+```bash
+GDK_BACKEND=wayland \
+GSK_RENDERER=ngl \
 ~/.local/share/hyprquickpaper-gnome/app.py
 ```
 
-On Wayland:
+The GNOME shortcut created by the installer launches the installed application using the configured renderer.
+
+## Cache
+
+Thumbnail generation is handled separately from the browsing interface.
+
+To generate or update the thumbnail cache manually:
 
 ```bash
-GDK_BACKEND=wayland ~/.local/share/hyprquickpaper-gnome/app.py
+make cache
 ```
+
+The cache process:
+
+* Reads the wallpaper and cache locations from `config.json`.
+* Generates thumbnails using ImageMagick.
+* Reuses existing thumbnails whenever possible.
+* Limits the number of concurrent thumbnail jobs.
+* Updates the wallpaper metadata used by the application.
+* Calculates the information required by the color filter.
+
+The cache is stored in:
+
+```text
+~/.cache/hyprquickpaper/thumbs
+```
+
+The directory contains the generated thumbnails and:
+
+```text
+metadata.json
+```
+
+The cache is normally generated automatically by the application, but `make cache` is useful when rebuilding it manually or after changing a large wallpaper collection.
+
+The number of simultaneous thumbnail jobs can be controlled through `cache_batch_size` in `config.json`.
+
+Example:
+
+```json
+{
+    "cache_batch_size": 20
+}
+```
+
+Higher values can make cache generation faster, but may increase CPU and memory usage during the process.
 
 ## Keyboard and mouse controls
 
@@ -209,11 +333,11 @@ When the name search is active:
 | `Esc`               | Leave the search field while keeping the results |
 | Back button         | Close search and restore the filter interface    |
 
-The search result itself remains active until the back button is used.
+The search result remains active until the back button is used.
 
 ## GNOME shortcut
 
-`install.sh` creates a GNOME custom shortcut automatically.
+`make install` configures a GNOME custom shortcut automatically.
 
 Existing custom shortcuts are preserved.
 
@@ -223,13 +347,13 @@ To change the shortcut later, open:
 
 Find **HyprQuickPaper GNOME** and edit its shortcut.
 
-## Customization
+The shortcut created by the installer points to the installed application rather than the source directory.
 
-Most visual customization is intentionally kept close to the top of `app.py`, while filter appearance is controlled by `ui/color_filter.css`.
+## Customization
 
 ### `config.json`
 
-**Location:** generated by `install.sh` in `~/.local/share/hyprquickpaper-gnome/`.
+**Location:** generated by `make install` in `~/.local/share/hyprquickpaper-gnome/`.
 
 | Attribute            | Description                                                                                                                   |
 | -------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
@@ -322,8 +446,8 @@ Selection and scrolling are animated continuously while a transition is active.
 The animation speed can be adjusted in `animate()`:
 
 ```python
-self.content_x += scroll_delta * 0.09
-self.visual_selection += selection_delta * 0.15
+self.content_x += scroll_delta * 0.15
+self.visual_selection += selection_delta * 0.22
 ```
 
 Higher values make the selector react faster. Lower values produce a slower and softer transition.
@@ -371,39 +495,30 @@ This includes:
 
 The actual set of available color groups is generated from the wallpaper metadata, so unavailable colors are not displayed.
 
-## Search behavior
-
-Wallpaper search operates on filenames rather than image contents.
-
-For example, searching for:
-
-```text
-mount
-```
-
-can match filenames such as:
-
-```text
-Mountains.jpg
-mountain-night.png
-MY_MOUNTAIN.jpg
-```
-
-The search is case-insensitive and updates while typing.
-
 ## Uninstallation
 
 To remove the installed application and its local cache:
 
 ```bash
-rm -rf ~/.local/share/hyprquickpaper-gnome
-rm -rf ~/.cache/hyprquickpaper
+make uninstall
 ```
 
-The GNOME keyboard shortcut is stored separately in GSettings.
+This removes the installed application from:
 
-Remove it through:
+```text
+~/.local/share/hyprquickpaper-gnome
+```
+
+and the local HyprQuickPaper cache from:
+
+```text
+~/.cache/hyprquickpaper
+```
+
+The wallpaper files themselves are not removed.
+
+The GNOME custom shortcut is stored separately in GSettings. After uninstalling, remove the **HyprQuickPaper GNOME** shortcut from:
 
 **Settings → Keyboard → View and Customize Shortcuts → Custom Shortcuts**
 
-Then remove **HyprQuickPaper GNOME**.
+Then remove the corresponding **HyprQuickPaper GNOME** entry.
