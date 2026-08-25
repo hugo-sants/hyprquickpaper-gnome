@@ -8,6 +8,14 @@ import subprocess
 import sys
 from pathlib import Path
 
+import warnings
+
+warnings.filterwarnings(
+    "ignore",
+    message="Gdk.cairo_set_source_pixbuf is deprecated",
+    category=DeprecationWarning,
+)
+
 import cairo
 import gi
 
@@ -487,7 +495,7 @@ class WallpaperPicker:
 
         try:
             subprocess.Popen(
-                [str(COMMANDS_SCRIPT), str(path)],
+                ["bash", str(COMMANDS_SCRIPT), str(path)],
                 stdout=subprocess.DEVNULL,
                 stderr=subprocess.DEVNULL,
                 start_new_session=True,
