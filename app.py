@@ -85,13 +85,18 @@ class WallpaperPicker:
         self.shear = -0.3
         self.spacing = 4.0
 
-        self.selected_index = 0
-        self.visual_selection = 0.0
-        self.target_selection = 0.0
+        self.shear_abs = abs(self.shear)
 
         # Carousel customization: selected horizontal and vertical expansion of the previews.
         self.horizontal_scale = 1.6
         self.vertical_scale = 1.1
+
+        self.horizontal_expand = self.horizontal_scale - 1.0
+        self.vertical_expand = self.vertical_scale - 1.0
+
+        self.selected_index = 0
+        self.visual_selection = 0.0
+        self.target_selection = 0.0
 
         self.content_x = 0.0
         self.target_x = 0.0
@@ -113,11 +118,7 @@ class WallpaperPicker:
         self.area.set_vexpand(True)
         self.area.set_draw_func(self.draw)
 
-        self.color_filter = ColorFilter(
-            self.apply_color_filter,
-            self.apply_search_filter,
-            self.on_search_key,
-        )
+        self.color_filter = ColorFilter(self.apply_color_filter, self.apply_search_filter, self.on_search_key)
 
         self.color_filter.set_halign(Gtk.Align.CENTER)
         self.color_filter.set_valign(Gtk.Align.START)
@@ -209,19 +210,11 @@ class WallpaperPicker:
     def install_css(self):
         provider = Gtk.CssProvider()
 
-        css_path = (
-            Path(__file__).resolve().parent
-            / "ui"
-            / "window.css"
-        )
+        css_path = Path(__file__).resolve().parent / "ui" / "window.css"
 
         provider.load_from_path(str(css_path))
 
-        Gtk.StyleContext.add_provider_for_display(
-            self.window.get_display(),
-            provider,
-            Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION,
-        )
+        Gtk.StyleContext.add_provider_for_display(self.window.get_display(), provider, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION)
 
     def install_input_controllers(self):
         click = Gtk.GestureClick()
@@ -237,10 +230,7 @@ class WallpaperPicker:
         drag.connect("drag-end", self.on_drag_end)
         self.area.add_controller(drag)
 
-        scroll = Gtk.EventControllerScroll.new(
-            Gtk.EventControllerScrollFlags.VERTICAL
-            | Gtk.EventControllerScrollFlags.HORIZONTAL
-        )
+        scroll = Gtk.EventControllerScroll.new(Gtk.EventControllerScrollFlags.VERTICAL | Gtk.EventControllerScrollFlags.HORIZONTAL)
         scroll.connect("scroll", self.on_scroll)
         self.area.add_controller(scroll)
 
@@ -265,9 +255,7 @@ class WallpaperPicker:
         monitors = display.get_monitors()
         monitor = monitors.get_item(0) if monitors.get_n_items() else None
 
-        window_height = math.ceil(
-            self.filter_height + self.panel_height * self.vertical_scale + self.filter_gap * 2
-        )
+        window_height = math.ceil(self.filter_height + self.panel_height * self.vertical_scale + self.filter_gap * 2)
 
         if monitor is not None:
             geometry = monitor.get_geometry()
@@ -285,13 +273,12 @@ class WallpaperPicker:
     def on_resize(self, _area, width, height):
         self.panel_y, self.panel_h = self.get_panel_geometry(width, height)
         self.tile_width, self.step = self.panel_metrics(width)
-        self.extra_width = self.tile_width * (self.horizontal_scale - 1.0)
+        self.extra_width = self.tile_width * self.horizontal_expand
         self.margin = self.tile_width * 0.25
         self.area.queue_draw()
 
     def get_panel_geometry(self, width, height):
         available_height = height - self.filter_height
-
         panel_h = min(self.panel_height, available_height)
 
         panel_y = (
@@ -350,6 +337,8 @@ class WallpaperPicker:
             print(f"Failed to load thumbnail {cache_path}: {exc}", file=sys.stderr)
 
     def load_cached_images(self):
+        self.images.clear()
+
         for wall in self.wallpapers:
             self.load_cached_image(wall)
 
@@ -363,12 +352,7 @@ class WallpaperPicker:
             return
 
         try:
-            subprocess.run(
-                [str(CACHE_SCRIPT), str(APP_DIR)],
-                stdout=subprocess.DEVNULL,
-                stderr=subprocess.DEVNULL,
-                check=False,
-            )
+            subprocess.run([str(CACHE_SCRIPT), str(APP_DIR)], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=False)
         except OSError as exc:
             print(f"Failed to run cache script: {exc}", file=sys.stderr)
 
@@ -415,7 +399,6 @@ class WallpaperPicker:
         if scroll_done and selection_done:
             self.animation_source = None
             self.normalize_visual_position()
-
             return False
 
         return True
@@ -445,7 +428,6 @@ class WallpaperPicker:
         count = len(self.wallpapers)
         new_index = index % count
         current_index = self.selected_index
-
         delta = new_index - current_index
 
         if delta > count / 2:
@@ -463,9 +445,12 @@ class WallpaperPicker:
             width = self.area.get_width()
             height = self.area.get_height()
 
+            if width <= 0 or height <= 0:
+                return
+
             self.panel_y, self.panel_h = self.get_panel_geometry(width, height)
             self.tile_width, self.step = self.panel_metrics(width)
-            self.extra_width = self.tile_width * (self.horizontal_scale - 1.0)
+            self.extra_width = self.tile_width * self.horizontal_expand
             self.margin = self.tile_width * 0.25
 
         item_center = index * self.step + self.tile_width / 2.0
@@ -494,12 +479,7 @@ class WallpaperPicker:
             return
 
         try:
-            subprocess.Popen(
-                ["bash", str(COMMANDS_SCRIPT), str(path)],
-                stdout=subprocess.DEVNULL,
-                stderr=subprocess.DEVNULL,
-                start_new_session=True,
-            )
+            subprocess.Popen(["bash", str(COMMANDS_SCRIPT), str(path)], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, start_new_session=True)
         except OSError as exc:
             print(f"Failed to apply wallpaper: {exc}", file=sys.stderr)
             return
@@ -531,6 +511,9 @@ class WallpaperPicker:
         if self.tile_width <= 0:
             width = self.area.get_width()
             height = self.area.get_height()
+
+            if width <= 0 or height <= 0:
+                return None
 
             self.panel_y, self.panel_h = self.get_panel_geometry(width, height)
             self.tile_width, self.step = self.panel_metrics(width)
@@ -606,7 +589,6 @@ class WallpaperPicker:
             return
 
         scale = max(width / pw, height / ph)
-
         dw = pw * scale
         dh = ph * scale
 
@@ -614,17 +596,13 @@ class WallpaperPicker:
         oy = y + (height - dh) / 2.0
 
         cr.save()
-
         cr.rectangle(x, y, width, height)
         cr.clip()
-
         cr.translate(ox, oy)
         cr.scale(scale, scale)
-
         cr.set_source_surface(surface, 0, 0)
         cr.get_source().set_filter(filter_type)
         cr.paint()
-
         cr.restore()
 
     def draw_tile(self, cr, path, x, y, tile_width, tile_height, distance, index, selected):
@@ -632,24 +610,17 @@ class WallpaperPicker:
 
         center_x = tile_width / 2.0
         center_y = tile_height / 2.0
-
         selection_progress = max(0.0, 1.0 - distance)
 
-        scaled_width = tile_width * (
-            1.0 + (self.horizontal_scale - 1.0) * selection_progress
-        )
-
-        scaled_height = tile_height * (
-            1.0 + (self.vertical_scale - 1.0) * selection_progress
-        )
+        scaled_width = tile_width * (1.0 + self.horizontal_expand * selection_progress)
+        scaled_height = tile_height * (1.0 + self.vertical_expand * selection_progress)
 
         left = x + center_x - scaled_width / 2.0
         top = y + center_y - scaled_height / 2.0
         right = left + scaled_width
         bottom = top + scaled_height
 
-        shear_offset = abs(self.shear) * scaled_height
-
+        shear_offset = self.shear_abs * scaled_height
         left -= shear_offset / 2.0
         right -= shear_offset / 2.0
 
@@ -663,7 +634,7 @@ class WallpaperPicker:
 
         image_info = self.images.get(path.name)
 
-        if image_info:
+        if image_info is not None:
             filter_type = cairo.FILTER_GOOD if distance < 0.5 else cairo.FILTER_NEAREST
 
             self.draw_cover_surface(
@@ -678,16 +649,10 @@ class WallpaperPicker:
                 filter_type,
             )
 
-        if selected and image_info:
+        if selected and image_info is not None:
             cr.reset_clip()
 
-            cr.set_source_rgba(
-                self.border_color.red,
-                self.border_color.green,
-                self.border_color.blue,
-                1.0,
-            )
-
+            cr.set_source_rgba(self.border_color.red, self.border_color.green, self.border_color.blue, 1.0)
             cr.set_line_width(4.0)
 
             cr.new_path()
@@ -707,30 +672,26 @@ class WallpaperPicker:
         if self.tile_width <= 0:
             self.panel_y, self.panel_h = self.get_panel_geometry(width, height)
             self.tile_width, self.step = self.panel_metrics(width)
-            self.extra_width = self.tile_width * (self.horizontal_scale - 1.0)
+            self.extra_width = self.tile_width * self.horizontal_expand
             self.margin = self.tile_width * 0.25
 
-        visible = []
-
-        visible_range = self.count_visible // 2 + 1
+        visible_range = self.count_visible // 2 + 2
         center = int(math.floor(self.visual_selection))
-
         start = center - visible_range
         end = center + visible_range + 1
-
         wallpaper_count = len(self.wallpapers)
         visual_center = round(self.visual_selection)
+        extra_width_half = self.extra_width / 2.0
 
         for index in range(start, end):
             real_index = index % wallpaper_count
             path = self.wallpapers[real_index]
-
             x = index * self.step - self.content_x
 
             if index < visual_center:
-                x -= self.extra_width / 2.0
+                x -= extra_width_half
             elif index > visual_center:
-                x += self.extra_width / 2.0
+                x += extra_width_half
 
             if x > width + self.margin:
                 continue
@@ -740,9 +701,6 @@ class WallpaperPicker:
 
             distance = abs(index - self.visual_selection)
 
-            visible.append((distance, index, path, x))
-
-        for distance, index, path, x in visible:
             self.draw_tile(
                 cr,
                 path,
@@ -782,7 +740,6 @@ class Application(Gtk.Application):
 def main():
     signal.signal(signal.SIGINT, signal.SIG_DFL)
     app = Application()
-
     raise SystemExit(app.run(sys.argv))
 
 
