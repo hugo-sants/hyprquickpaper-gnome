@@ -163,7 +163,7 @@ hyprquickpaper-gnome/
 Clone the repository and enter it:
 
 ```bash
-git clone <your-repository-url>
+git clone https://github.com/hugo-sants/hyprquickpaper-gnome.git
 cd hyprquickpaper-gnome
 ```
 
