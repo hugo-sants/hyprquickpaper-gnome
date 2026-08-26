@@ -30,11 +30,10 @@ find "$wallpaper_path" -type f \( \
     -iname "*.jpeg" -o \
     -iname "*.png" \
 \) | while read -r img; do
-
     filename=$(basename "$img")
     out="$cache_path/$filename"
 
-    if [[ -f "$out" ]]; then
+    if [[ -f "$out" && "$out" -nt "$img" ]]; then
         continue
     fi
 
@@ -49,10 +48,22 @@ find "$wallpaper_path" -type f \( \
             wait -n
         done
     fi
-
 done
 
 wait
+
+find "$cache_path" -maxdepth 1 -type f \( \
+    -iname "*.jpg" -o \
+    -iname "*.jpeg" -o \
+    -iname "*.png" \
+\) | while read -r cached; do
+    filename=$(basename "$cached")
+    source="$wallpaper_path/$filename"
+
+    if [[ ! -f "$source" ]]; then
+        rm -f "$cached"
+    fi
+done
 
 cd "$APP_DIR"
 
