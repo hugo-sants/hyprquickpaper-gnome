@@ -579,7 +579,11 @@ class WallpaperPicker:
 
     def on_scroll(self, _controller, dx, dy):
         delta = dy if abs(dy) >= abs(dx) else dx
-        self.set_target_scroll(self.content_x - delta * 80.0)
+
+        if delta > 0:
+            self.move_selection(1)
+        elif delta < 0:
+            self.move_selection(-1)
 
         return True
 
