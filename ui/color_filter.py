@@ -150,6 +150,7 @@ class ColorFilter(Gtk.Box):
         on_filter_changed,
         on_search_changed,
         on_search_key,
+        on_settings_clicked,
     ):
         super().__init__(
             orientation=Gtk.Orientation.HORIZONTAL,
@@ -162,6 +163,7 @@ class ColorFilter(Gtk.Box):
         self.on_filter_changed = on_filter_changed
         self.on_search_changed = on_search_changed
         self.on_search_key = on_search_key
+        self.on_settings_clicked = on_settings_clicked
 
         self.active_color = None
         self.buttons = {}
@@ -201,6 +203,7 @@ class ColorFilter(Gtk.Box):
         self.buttons.clear()
         self.swatches.clear()
 
+        self.add_settings_button()
         self.add_all_button()
 
         for color in self.current_colors:
@@ -208,6 +211,26 @@ class ColorFilter(Gtk.Box):
 
         self.add_search_button()
         self.set_active(self.active_color)
+
+    def add_settings_button(self):
+        container = Gtk.Box()
+        container.set_size_request(32, 32)
+        container.set_halign(Gtk.Align.CENTER)
+        container.set_valign(Gtk.Align.CENTER)
+
+        button = Gtk.Button()
+        button.add_css_class("settings-button")
+        button.set_focusable(False)
+        button.set_hexpand(True)
+        button.set_vexpand(True)
+        button.set_halign(Gtk.Align.FILL)
+        button.set_valign(Gtk.Align.FILL)
+        button.set_tooltip_text("Settings")
+        button.set_child(Gtk.Image.new_from_icon_name("settings-symbolic"))
+        button.connect("clicked", self.on_settings_clicked)
+
+        container.append(button)
+        self.append(container)
 
     def add_all_button(self):
         container = Gtk.Box()
