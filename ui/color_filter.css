@@ -26,9 +26,28 @@
     border-radius: 10px;
 }
 
-.color-filter .all-button {
-    border-radius: 5px;
+.color-filter .settings-button {
+    border-radius: 8px;
     background-color: rgba(255, 255, 255, 0.10);
+}
+
+.color-filter .settings-button image {
+    -gtk-icon-size: 20px;
+}
+
+.color-filter .settings-button:hover {
+    background-color: rgba(255, 255, 255, 0.10);
+}
+
+.color-filter .all-button {
+    border-radius: 10px;
+    background-color: rgba(255, 255, 255, 0.10);
+}
+
+.color-filter .all-button.selected {
+    border: none;
+    border-radius: 10px;
+    box-shadow: inset 0 0 0 1.9px rgba(255, 255, 255, 0.95);
 }
 
 .color-filter .search-button {

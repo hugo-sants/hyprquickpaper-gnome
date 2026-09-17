@@ -28,6 +28,7 @@ from gi.repository import Gdk, GdkPixbuf, Gtk
 from cache.metadata import MetadataStore
 from wallpaper.repository import WallpaperRepository
 from ui.color_filter import ColorFilter
+from ui.settings import SettingsView
 
 
 APP_DIR = Path(__file__).resolve().parent
@@ -71,7 +72,7 @@ class WallpaperPicker:
         self.count_visible = max(1, int(self.config.get("number_of_pictures", 7)))
 
         # Appearance customization: change the selected border color.
-        self.border_color = self.parse_color(self.config.get("border_color", "#C27B63"))
+        self.border_color = self.parse_color(self.config.get("border_color", "#4B4B50"))
 
         self.panel_height = 500
         self.filter_height = 64
@@ -118,20 +119,46 @@ class WallpaperPicker:
         self.area.set_vexpand(True)
         self.area.set_draw_func(self.draw)
 
-        self.color_filter = ColorFilter(self.apply_color_filter, self.apply_search_filter, self.on_search_key)
+        self.color_filter = ColorFilter(self.apply_color_filter, self.apply_search_filter, self.on_search_key, self.show_settings)
 
         self.color_filter.set_halign(Gtk.Align.CENTER)
         self.color_filter.set_valign(Gtk.Align.START)
         self.color_filter.set_margin_top(16)
 
-        self.overlay = Gtk.Overlay()
-        self.overlay.add_css_class("hyprquickpaper-overlay")
-        self.overlay.set_child(self.area)
-        self.overlay.add_overlay(self.color_filter)
-        self.window.set_child(self.overlay)
+        self.picker_view = Gtk.Overlay()
+        self.picker_view.add_css_class("hyprquickpaper-overlay")
+        self.picker_view.set_child(self.area)
+        self.picker_view.add_overlay(self.color_filter)
+
+        self.settings_view = SettingsView(self.get_settings(), self.show_picker, self.reset_settings)
+        self.settings_view.set_size_request(640, 575)
+        self.settings_view.set_halign(Gtk.Align.CENTER)
+        self.settings_view.set_valign(Gtk.Align.CENTER)
+
+        self.stack = Gtk.Stack()
+        self.stack.set_transition_type(Gtk.StackTransitionType.SLIDE_LEFT_RIGHT)
+        self.stack.set_transition_duration(160)
+        self.stack.set_hexpand(True)
+        self.stack.set_vexpand(True)
+        self.stack.add_named(self.picker_view, "picker")
+        self.stack.add_named(self.settings_view, "settings")
+        self.window.set_child(self.stack)
 
         self.install_input_controllers()
         self.install_css()
+
+        self.dynamic_css_provider = Gtk.CssProvider()
+
+        Gtk.StyleContext.add_provider_for_display(
+            self.window.get_display(),
+            self.dynamic_css_provider,
+            Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION + 1,
+        )
+
+        self.update_transparency_css(
+            self.config.get("filter_opacity", 60),
+            self.config.get("settings_opacity", 95),
+        )
 
         self.area.connect("resize", self.on_resize)
         self.window.connect("close-request", self.on_close_request)
@@ -141,6 +168,93 @@ class WallpaperPicker:
         with CONFIG_FILE.open("r", encoding="utf-8") as fh:
             return json.load(fh)
 
+    def update_transparency_css(self, filter_opacity, settings_opacity):
+        filter_alpha = max(0, min(100, int(filter_opacity))) / 100.0
+        settings_alpha = max(0, min(100, int(settings_opacity))) / 100.0
+
+        css = f"""
+        .color-filter {{
+            background-color: rgba(57, 58, 58, {filter_alpha:.2f});
+        }}
+
+        .settings-view {{
+            background-color: rgba(34, 34, 34, {settings_alpha:.2f});
+        }}
+        """
+
+        self.dynamic_css_provider.load_from_data(css.encode())
+
+    def get_settings(self):
+        return {
+            "wallpaper_path": str(self.wallpaper_dir),
+            "number_of_pictures": self.count_visible,
+            "panel_height": self.panel_height,
+            "spacing": self.spacing,
+            "shear": self.shear_abs,
+            "horizontal_scale": self.horizontal_scale,
+            "vertical_scale": self.vertical_scale,
+            "border_color": self.config.get("border_color", "#4B4B50"),
+            "filter_opacity": self.config.get("filter_opacity", 60),
+            "settings_opacity": self.config.get("settings_opacity", 95),
+        }
+
+    def reset_settings(self):
+        defaults = {
+            "number_of_pictures": 7,
+            "panel_height": 500,
+            "spacing": 4.0,
+            "shear": 0.3,
+            "horizontal_scale": 1.6,
+            "vertical_scale": 1.1,
+            "border_color": "#4B4B50",
+            "filter_opacity": 60,
+            "settings_opacity": 95,
+        }
+
+        settings = self.get_settings()
+        settings.update(defaults)
+        self.apply_settings(settings)
+        self.settings_view.set_settings(self.get_settings())
+
+    def apply_settings(self, settings):
+        self.count_visible = max(1, int(settings["number_of_pictures"]))
+        self.panel_height = float(settings["panel_height"])
+        self.spacing = float(settings["spacing"])
+        self.shear = float(settings["shear"])
+        self.shear_abs = abs(self.shear)
+        self.horizontal_scale = float(settings["horizontal_scale"])
+        self.vertical_scale = float(settings["vertical_scale"])
+        self.horizontal_expand = self.horizontal_scale - 1.0
+        self.vertical_expand = self.vertical_scale - 1.0
+        self.border_color = self.parse_color(settings["border_color"])
+
+        self.config.update(settings)
+
+        self.update_transparency_css(settings["filter_opacity"], settings["settings_opacity"])
+
+        with CONFIG_FILE.open("w", encoding="utf-8") as fh:
+            json.dump(self.config, fh, indent=4)
+            fh.write("\n")
+
+        self.tile_width = 0.0
+        self.step = 0.0
+        self.extra_width = 0.0
+        self.margin = 0.0
+
+        display = self.window.get_display()
+        monitors = display.get_monitors()
+        monitor = monitors.get_item(0) if monitors.get_n_items() else None
+
+        window_height = math.ceil(self.filter_height + self.panel_height * self.vertical_scale + self.filter_gap * 2)
+
+        if monitor is not None:
+            geometry = monitor.get_geometry()
+            self.window.set_default_size(geometry.width, window_height)
+        else:
+            self.window.set_default_size(1920, window_height)
+
+        self.area.queue_draw()
+
     @staticmethod
     def parse_color(value):
         rgba = Gdk.RGBA()
@@ -149,6 +263,18 @@ class WallpaperPicker:
             rgba.parse("#C27B63")
 
         return rgba
+
+    def show_settings(self, _button=None):
+        self.settings_view.set_settings(self.get_settings())
+        self.stack.set_visible_child_name("settings")
+        self.settings_view.grab_focus()
+
+    def show_picker(self, settings=None):
+        if settings is not None:
+            self.apply_settings(settings)
+
+        self.stack.set_visible_child_name("picker")
+        self.area.grab_focus()
 
     def update_metadata(self):
         self.metadata_store.load()
