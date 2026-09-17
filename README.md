@@ -29,6 +29,10 @@ The project provides a standalone GNOME implementation inspired by the workflow 
 
 ![Color filter](assets/color-filter.png)
 
+### Settings Panel
+
+![Settings panel](assets/settings-panel.png)
+
 ## Requirements
 
 - Python 3
@@ -96,7 +100,7 @@ The application is installed to:
 ~/.local/share/hyprquickpaper-gnome
 ```
 
-The installer asks where your wallpapers are stored and which GNOME keyboard shortcut should open the picker.
+The installer asks where your wallpapers are stored and which GNOME keyboard shortcut should open the selector.
 
 The default shortcut is:
 
