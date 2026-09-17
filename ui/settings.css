@@ -1,0 +1,155 @@
+.settings-view {
+    background-color: rgba(34, 34, 34, 0.95);
+    border: 1px solid rgba(255, 255, 255, 0.38);
+    border-radius: 14px;
+}
+
+.settings-header {
+    min-height: 28px;
+    padding-bottom: 12px;
+}
+
+.settings-tabs {
+    background: transparent;
+}
+
+.settings-tab {
+    min-height: 34px;
+    padding: 0 18px;
+    border: none;
+    border-radius: 9px;
+    background: transparent;
+    background-image: none;
+    box-shadow: none;
+    color: rgba(255, 255, 255, 0.78);
+    font-weight: 600;
+}
+
+.settings-tab:hover {
+    background-color: rgba(255, 255, 255, 0.07);
+}
+
+.settings-tab:checked {
+    background-color: rgba(255, 255, 255, 0.12);
+    color: #ffffff;
+}
+
+.settings-tab image {
+    -gtk-icon-size: 14px;
+}
+
+.settings-close-button {
+    min-width: 24px;
+    min-height: 24px;
+    padding: 0;
+    border: none;
+    border-radius: 999px;
+    background-color: rgba(255, 255, 255, 0.10);
+    background-image: none;
+    box-shadow: none;
+}
+
+.settings-close-button:hover {
+    background-color: rgba(255, 255, 255, 0.16);
+}
+
+.settings-close-button image {
+    -gtk-icon-size: 12px;
+}
+
+.settings-content {
+    color: #ffffff;
+}
+
+.settings-section-title {
+    font-size: 16px;
+    font-weight: 700;
+}
+
+.settings-group {
+    background-color: rgba(255, 255, 255, 0.055);
+    border-radius: 10px;
+}
+
+.settings-row {
+    min-height: 54px;
+    padding: 7px 15px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+}
+
+.settings-row:last-child {
+    border-bottom: none;
+}
+
+.settings-row-title {
+    color: rgba(255, 255, 255, 0.88);
+    font-size: 15px;
+}
+
+.settings-row-subtitle {
+    color: rgba(255, 255, 255, 0.50);
+    font-size: 13px;
+}
+
+.settings-value {
+    color: rgba(255, 255, 255, 0.86);
+    font-size: 15px;
+}
+
+.settings-scroll {
+    background: transparent;
+}
+
+.settings-scroll scrollbar {
+    background: transparent;
+}
+
+.settings-step-button {
+    min-width: 30px;
+    min-height: 30px;
+    padding: 0;
+    border: none;
+    border-radius: 999px;
+    background-color: rgba(255, 255, 255, 0.10);
+    background-image: none;
+    box-shadow: none;
+    font-size: 16px;
+    font-weight: 500;
+}
+
+.settings-step-button:hover {
+    background-color: rgba(255, 255, 255, 0.16);
+}
+
+.settings-step-button:active {
+    background-color: rgba(255, 255, 255, 0.22);
+}
+
+.settings-color-button {
+    min-width: 30px;
+    min-height: 30px;
+    padding: 0;
+    border: none;
+    border-radius: 999px;
+    background-image: none;
+    box-shadow: none;
+}
+
+.settings-reset-button {
+    min-height: 30px;
+    padding: 0 14px;
+    border: none;
+    border-radius: 8px;
+    background-color: rgba(229, 57, 53, 1);
+    background-image: none;
+    box-shadow: none;
+    color: rgba(255, 255, 255, 0.88);
+}
+
+.settings-reset-button:hover {
+    background-color: rgba(255, 255, 255, 0.16);
+}
+
+.settings-reset-button:active {
+    background-color: rgba(255, 255, 255, 0.22);
+}
